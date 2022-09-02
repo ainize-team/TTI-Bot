@@ -1,4 +1,4 @@
-# Python Template Repository
+# TTI-Bot
 
 [![Github Contributors](https://img.shields.io/github/contributors/ainize-team/TTI-Bot)](https://github.com/badges/ainize-team/TTI-Bot/contributors)
 [![GitHub issues](https://img.shields.io/github/issues/ainize-team/TTI-Bot.svg)](https://github.com/ainize-team/TTI-Bot/issues)
@@ -15,13 +15,23 @@
 ![Package Management](https://img.shields.io/badge/package%20management-poetry-blue)
 
 ## Description
-This repository a template repository for new Python Project. Before using this repository, you should modify [README.md](./README.md), [LICENSE](./LICENSE) and [pyproject.toml](./pyproject.toml).
+Text To Image Discord Bot For AIN Dao.
 
 ## Installation
-How to install your python code.
-
-## Usage
-How to use your python code.
+1. Build Docker Image
+```
+git clone https://github.com/ainize-team/TTI-Bot
+cd TTI-Bot
+docker build -t tti-bot .
+```
+2. Run Docker Image
+```
+docker run --name tti-bot \
+     -e DISCORD_BOT_TOKEN={discord_bot_token} \
+     -e DISCORD_GUILD_ID={discord_guild_id} \
+     -e MODEL_ENDPOINT={model_endpoint} \
+     tti-bot
+```
 
 ## License
 
