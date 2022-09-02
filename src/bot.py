@@ -83,7 +83,7 @@ async def generate(
                 )
                 if get_res.status_code == 200:
                     status = get_res.json()["status"]
-                    logger.info(f"Step : {step}/30 {status}")
+                    logger.info(f"Step : {step}/60")
                     if status == ResponseStatusEnum.COMPLETED:
                         embed = discord.Embed()
                         embed.set_image(url=get_res.json()["result"]["grid"]["url"])
