@@ -1,12 +1,12 @@
 # Python Template Repository
 
-[![Github Contributors](https://img.shields.io/github/contributors/byeongal/python-template-repository)](https://github.com/badges/byeongal/python-template-repository/contributors)
-[![GitHub issues](https://img.shields.io/github/issues/byeongal/python-template-repository.svg)](https://github.com/byeongal/python-template-repository/issues)
-![Github Last Commit](https://img.shields.io/github/last-commit/byeongal/python-template-repository)
-![Github Repository Size](https://img.shields.io/github/repo-size/byeongal/python-template-repository)
-[![GitHub Stars](https://img.shields.io/github/stars/byeongal/python-template-repository.svg)](https://github.com/byeongal/python-template-repository/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/byeongal/python-template-repository.svg)](https://github.com/byeongal/python-template-repository/network/members)
-[![GitHub Watch](https://img.shields.io/github/watchers/byeongal/python-template-repository.svg)](https://github.com/byeongal/python-template-repository/watchers)
+[![Github Contributors](https://img.shields.io/github/contributors/ainize-team/TTI-Bot)](https://github.com/badges/ainize-team/TTI-Bot/contributors)
+[![GitHub issues](https://img.shields.io/github/issues/ainize-team/TTI-Bot.svg)](https://github.com/ainize-team/TTI-Bot/issues)
+![Github Last Commit](https://img.shields.io/github/last-commit/ainize-team/TTI-Bot)
+![Github Repository Size](https://img.shields.io/github/repo-size/ainize-team/TTI-Bot)
+[![GitHub Stars](https://img.shields.io/github/stars/ainize-team/TTI-Bot.svg)](https://github.com/ainize-team/TTI-Bot/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/ainize-team/TTI-Bot.svg)](https://github.com/ainize-team/TTI-Bot/network/members)
+[![GitHub Watch](https://img.shields.io/github/watchers/ainize-team/TTI-Bot.svg)](https://github.com/ainize-team/TTI-Bot/watchers)
 
 ![Supported Python versions](https://img.shields.io/badge/python-3.8-brightgreen)
 [![Imports](https://img.shields.io/badge/imports-isort-brightgreen)](https://pycqa.github.io/isort/)
@@ -25,4 +25,4 @@ How to use your python code.
 
 ## License
 
-[![Licence](https://img.shields.io/github/license/byeongal/python-template-repository.svg)](./LICENSE)
+[![Licence](https://img.shields.io/github/license/ainize-team/TTI-Bot.svg)](./LICENSE)

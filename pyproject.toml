@@ -13,14 +13,17 @@ multi_line_output = 3
 use_parentheses = true
 
 [tool.poetry]
-name = "python-template-repository"
+name = "TTI-Bot"
 version = "0.1.0"
-description = ""
-authors = ["YoungJae Kim <corea_kyj@naver.com>"]
+description = "Text To Image Discord Bot for AIN Dao."
+authors = ["YoungJae Kim <byeongal@comcom.ai>", "DongHoon Baek <baek@comcom.ai>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.8"
+"discord.py" = "^2.0.1"
+pydantic = "^1.10.1"
+requests = "^2.28.1"
 
 [tool.poetry.dev-dependencies]
 black = "^22.6.0"
