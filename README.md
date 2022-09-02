@@ -26,7 +26,7 @@ docker build -t tti-bot .
 ```
 2. Run Docker Image
 ```
-docker run --name tti-bot \
+docker run -d --name tti-bot \
      -e DISCORD_BOT_TOKEN={discord_bot_token} \
      -e DISCORD_GUILD_ID={discord_guild_id} \
      -e MODEL_ENDPOINT={model_endpoint} \
