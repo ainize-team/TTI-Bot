@@ -6,7 +6,7 @@ from settings import model_settings
 class ImageGenerationRequest(BaseModel):
     prompt: str = Field(
         ...,
-        description="try adding increments to your prompt such as 'oil on canvas', 'a painting', 'a book cover'",
+        description="A description of what you'd like the machine to generate.",
     )
     steps: int = Field(
         default=45, ge=1, le=100, description="How many steps to spend generating (diffusing) your image."
