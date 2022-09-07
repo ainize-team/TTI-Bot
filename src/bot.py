@@ -221,7 +221,7 @@ async def help(interaction: discord.Interaction):
         {
             "name": "steps",
             "value": "How many steps to spend generating (diffusing) your image.",
-            "condition": "integer | min: 1 | max: 100 | default: 100",
+            "condition": "integer | min: 1 | max: 100 | default: 45",
         },
         {
             "name": "seed",
