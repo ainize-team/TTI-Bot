@@ -231,12 +231,12 @@ async def help(interaction: discord.Interaction):
         {
             "name": "width",
             "value": "The width of the generated image.",
-            "condition": f"integer | min: {model_settings.model_image_minimum_size} | max: {model_settings.model_image_minimum_size} | default: {model_settings.model_image_minimum_size}",
+            "condition": f"integer | min: {model_settings.model_image_minimum_size} | max: {model_settings.model_image_maximum_size} | default: {model_settings.model_image_minimum_size}",
         },
         {
             "name": "height",
             "value": "The height of the generated image.",
-            "condition": f"integer | min: {model_settings.model_image_minimum_size} | max: {model_settings.model_image_minimum_size} | default: {model_settings.model_image_minimum_size}",
+            "condition": f"integer | min: {model_settings.model_image_minimum_size} | max: {model_settings.model_image_maximum_size} | default: {model_settings.model_image_minimum_size}",
         },
         {
             "name": "images",
