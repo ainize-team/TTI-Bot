@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import logging.handlers
+import random
 from typing import Optional
 
 import discord
@@ -44,15 +45,17 @@ async def generate(
     interaction: discord.Interaction,
     prompt: str,
     steps: Optional[int] = 45,
-    seed: Optional[int] = 42,
+    seed: Optional[int] = None,
     width: Optional[int] = model_settings.model_image_minimum_size,
     height: Optional[int] = model_settings.model_image_minimum_size,
     images: Optional[int] = 2,
-    guidance_scale: Optional[float] = 7,
+    guidance_scale: Optional[float] = 7.0,
 ):
     logger.info(f"{interaction.user.name} generate image")
     try:
         try:
+            if seed is None:
+                seed = random.randint(0, 2147483647)
             image_generation_request = ImageGenerationRequest(
                 prompt=prompt,
                 steps=steps,
