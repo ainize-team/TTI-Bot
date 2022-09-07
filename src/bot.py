@@ -7,6 +7,7 @@ from typing import Optional
 import discord
 import requests
 from discord import app_commands
+from pydantic import ValidationError
 
 from client import TextToImageClient
 from enums import ResponseStatusEnum
@@ -44,25 +45,48 @@ async def generate(
     prompt: str,
     steps: Optional[int] = 45,
     seed: Optional[int] = 42,
-    width: Optional[int] = 512,
-    height: Optional[int] = 512,
+    width: Optional[int] = model_settings.model_image_minimum_size,
+    height: Optional[int] = model_settings.model_image_minimum_size,
     images: Optional[int] = 2,
     guidance_scale: Optional[float] = 7.5,
 ):
     logger.info(f"{interaction.user.name} generate image")
     try:
-        logger.info(f"{interaction.user.name} generate image - validate user input")
-        image_generation_request = ImageGenerationRequest(
-            prompt=prompt,
-            steps=steps,
-            seed=seed,
-            width=width,
-            height=height,
-            images=images,
-            guidance_scale=guidance_scale,
-        )
+        try:
+            image_generation_request = ImageGenerationRequest(
+                prompt=prompt,
+                steps=steps,
+                seed=seed,
+                width=width,
+                height=height,
+                images=images,
+                guidance_scale=guidance_scale,
+            )
+        except ValidationError as validation_error:
+            error_message_list = []
+            for error in json.loads(validation_error.json()):
+                loc = error["loc"][0]
+                msg = error["msg"]
+                error_message_list.append(f"{loc} : {msg}")
+            error_message = "\n".join(error_message_list)
+            error_embed = discord.Embed(
+                title="Input Validation Error", colour=discord.Colour.red(), description=error_message
+            )
+            logger.error(f"{interaction.user.name} ValidationError")
+            await interaction.response.send_message(embed=error_embed)
+            return
+        except Exception as unknown_error:
+            error_embed = discord.Embed(
+                title="Unknown Error",
+                colour=discord.Colour.red(),
+                description=f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}",
+            )
+            await interaction.response.send_message(embed=error_embed)
+            return
+
         logger.info(f"{interaction.user.name} generate image - request task")
         request_data = image_generation_request.dict()
+        logger.info(f"Data : {request_data}")
         post_res = requests.post(
             f"{model_settings.model_endpoint}/generate",
             headers={"Content-Type": "application/json", "accept": "application/json"},
@@ -72,9 +96,19 @@ async def generate(
             task_id = post_res.json()["task_id"]
             user_mention = interaction.user.mention
             mentions = discord.AllowedMentions(users=True)
-            await interaction.response.send_message(f"The task was successfully requested. Task id is {task_id}")
+            message_embed = discord.Embed(
+                title=f"Prompt: {image_generation_request.prompt}",
+                colour=discord.Colour.blue(),
+                description=f"task id: {task_id}",
+            )
+            await interaction.response.send_message(
+                embed=message_embed,
+                content=f"{user_mention} Your task is successfully requested.",
+                allowed_mentions=mentions,
+            )
             prev_status: ResponseStatusEnum = ResponseStatusEnum.PENDING
-            for step in range(60):
+            for step in range(300):
+                logger.info(f"Step : {step}/300")
                 get_res = requests.get(
                     f"{model_settings.model_endpoint}/result/{task_id}",
                     headers={
@@ -83,32 +117,45 @@ async def generate(
                 )
                 if get_res.status_code == 200:
                     status = get_res.json()["status"]
-                    logger.info(f"Step : {step}/60")
                     if status == ResponseStatusEnum.COMPLETED:
-                        embed = discord.Embed()
-                        embed.set_image(url=get_res.json()["result"]["grid"]["url"])
+                        message_embed.set_image(url=get_res.json()["result"]["grid"]["url"])
+                        message_embed.colour = discord.Colour.green()
                         await interaction.edit_original_response(
                             content=f"{user_mention} Your task is completed.",
-                            embed=embed,
+                            embed=message_embed,
                             allowed_mentions=mentions,
                         )
                         return
                     elif status != prev_status:
                         await interaction.edit_original_response(
-                            content=f"{user_mention} Status Update Detected({task_id}) from {prev_status} to {status}",
+                            embed=message_embed,
+                            content=f"{user_mention} Your task's status is updated from {prev_status} to {status}",
                             allowed_mentions=mentions,
                         )
                         prev_status = status
                     await asyncio.sleep(1)
             else:
-                logger.error(f"{interaction.user.name} Request Error: {post_res.status_code}")
-                await interaction.response.send_message(f"Time Out Error : {task_id}")
+                error_embed = discord.Embed(
+                    title="TimeOut Error",
+                    colour=discord.Colour.red(),
+                    description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id{task_id}.",
+                )
+                await interaction.response.send_message(embed=error_embed)
         else:
-            logger.error(f"Failed to request {post_res.text}")
-            await interaction.response.send_message("Request Failed")
-    except Exception as e:
-        logger.error(f"{interaction.user.name} Error :{e}")
-        await interaction.response.send_message(f"Error: {e}")
+            logger.error("Error :", post_res.text)
+            error_embed = discord.Embed(
+                title="Request Error",
+                colour=discord.Colour.red(),
+                description="The request failed.\nPlease try again in a momentarily.\nIf the situation repeats, please let our community manager know.",
+            )
+            await interaction.response.send_message(embed=error_embed)
+    except Exception as unknown_error:
+        error_embed = discord.Embed(
+            title="Unknown Error",
+            colour=discord.Colour.red(),
+            description=f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}",
+        )
+        await interaction.response.send_message(embed=error_embed)
 
 
 client.run(discord_settings.discord_bot_token)
