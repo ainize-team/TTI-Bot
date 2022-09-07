@@ -14,7 +14,7 @@ use_parentheses = true
 
 [tool.poetry]
 name = "TTI-Bot"
-version = "0.1.1"
+version = "0.2.0"
 description = "Text To Image Discord Bot for AIN Dao."
 authors = ["YoungJae Kim <byeongal@comcom.ai>", "DongHoon Baek <baek@comcom.ai>"]
 license = "MIT"
