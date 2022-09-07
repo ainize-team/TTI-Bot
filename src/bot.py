@@ -8,7 +8,8 @@ from typing import Optional
 import discord
 import requests
 from discord import app_commands
-from pydantic import ValidationError
+from discord.ui import Button, View
+from pydantic import HttpUrl, ValidationError
 
 from client import TextToImageClient
 from enums import ResponseStatusEnum
@@ -134,7 +135,30 @@ async def generate(
                 if get_res.status_code == 200:
                     status = get_res.json()["status"]
                     if status == ResponseStatusEnum.COMPLETED:
-                        message_embed.set_image(url=get_res.json()["result"]["grid"]["url"])
+
+                        def on_click_button(image_url: HttpUrl):
+                            async def call_back(interaction: discord.Interaction):
+
+                                embed = discord.Embed(
+                                    title=f"Prompt: {image_generation_request.prompt}",
+                                    colour=discord.Colour.green(),
+                                    description=f"task id: {task_id}",
+                                )
+                                embed.set_image(url=image_url)
+                                await interaction.response.send_message(embed=embed, ephemeral=True)
+
+                            return call_back
+
+                        result = get_res.json()["result"]
+                        button_list = [
+                            Button(label=f"Image #{i + 1}", style=discord.ButtonStyle.gray)
+                            for i in range(image_generation_request.images)
+                        ]
+                        view = View(timeout=None)
+                        for i in range(image_generation_request.images):
+                            button_list[i].callback = on_click_button(result[str(i + 1)]["url"])
+                            view.add_item(button_list[i])
+                        message_embed.set_image(url=result["grid"]["url"])
                         if len(warning_message_list) != 0:
                             message_embed.colour = discord.Colour.orange()
                             message_embed.description = "\n".join(warning_message_list)
@@ -142,6 +166,7 @@ async def generate(
                                 content=f"{user_mention} Your task is completed.",
                                 embed=message_embed,
                                 allowed_mentions=mentions,
+                                view=view,
                             )
                         else:
                             message_embed.colour = discord.Colour.green()
@@ -149,6 +174,7 @@ async def generate(
                                 content=f"{user_mention} Your task is completed.",
                                 embed=message_embed,
                                 allowed_mentions=mentions,
+                                view=view,
                             )
                         return
                     elif status != prev_status:
@@ -165,7 +191,7 @@ async def generate(
                     colour=discord.Colour.red(),
                     description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id{task_id}.",
                 )
-                await interaction.response.send_message(embed=error_embed)
+                await interaction.edit_original_response(embed=error_embed)
         else:
             logger.error("Error :", post_res.text)
             error_embed = discord.Embed(
