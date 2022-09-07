@@ -56,6 +56,19 @@ async def generate(
         try:
             if seed is None:
                 seed = random.randint(0, 2147483647)
+            warning_message_list = []
+            if width % model_settings.model_image_unit_size != 0:
+                warning_message_list.append("width is a multiple of {model_settings.model_image_unit_size}")
+                warning_message_list.append(
+                    f"change width value from {width} to {(width // model_settings.model_image_unit_size) * model_settings.model_image_unit_size}"
+                )
+                width = (width // model_settings.model_image_unit_size) * model_settings.model_image_unit_size
+            if height % model_settings.model_image_unit_size != 0:
+                warning_message_list.append("height is a multiple of {model_settings.model_image_unit_size}")
+                warning_message_list.append(
+                    f"change height value from {height} to {(height // model_settings.model_image_unit_size) * model_settings.model_image_unit_size}"
+                )
+                height = (height // model_settings.model_image_unit_size) * model_settings.model_image_unit_size
             image_generation_request = ImageGenerationRequest(
                 prompt=prompt,
                 steps=steps,
@@ -122,12 +135,21 @@ async def generate(
                     status = get_res.json()["status"]
                     if status == ResponseStatusEnum.COMPLETED:
                         message_embed.set_image(url=get_res.json()["result"]["grid"]["url"])
-                        message_embed.colour = discord.Colour.green()
-                        await interaction.edit_original_response(
-                            content=f"{user_mention} Your task is completed.",
-                            embed=message_embed,
-                            allowed_mentions=mentions,
-                        )
+                        if len(warning_message_list) != 0:
+                            message_embed.colour = discord.Colour.orange()
+                            message_embed.description = "\n".join(warning_message_list)
+                            await interaction.edit_original_response(
+                                content=f"{user_mention} Your task is completed.",
+                                embed=message_embed,
+                                allowed_mentions=mentions,
+                            )
+                        else:
+                            message_embed.colour = discord.Colour.green()
+                            await interaction.edit_original_response(
+                                content=f"{user_mention} Your task is completed.",
+                                embed=message_embed,
+                                allowed_mentions=mentions,
+                            )
                         return
                     elif status != prev_status:
                         await interaction.edit_original_response(

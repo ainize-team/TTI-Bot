@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 from settings import model_settings
 
@@ -31,15 +31,3 @@ class ImageGenerationRequest(BaseModel):
         le=20,
         description="How much the image will be like your prompt. Higher values keep your image closer to your prompt.",
     )
-
-    @validator("width")
-    def validate_width(cls, v):
-        if v % model_settings.model_image_unit_size != 0:
-            raise ValueError(f"ensure that value is a multiple of {model_settings.model_image_unit_size}")
-        return v
-
-    @validator("height")
-    def validate_height(cls, v):
-        if v % model_settings.model_image_unit_size != 0:
-            raise ValueError(f"ensure that value is a multiple of {model_settings.model_image_unit_size}")
-        return v
