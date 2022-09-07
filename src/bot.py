@@ -48,7 +48,7 @@ async def generate(
     width: Optional[int] = model_settings.model_image_minimum_size,
     height: Optional[int] = model_settings.model_image_minimum_size,
     images: Optional[int] = 2,
-    guidance_scale: Optional[float] = 7.5,
+    guidance_scale: Optional[float] = 7,
 ):
     logger.info(f"{interaction.user.name} generate image")
     try:
