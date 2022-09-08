@@ -209,4 +209,53 @@ async def generate(
         await interaction.response.send_message(embed=error_embed)
 
 
+# TODO: Find Better way
+@client.tree.command(guild=GUILD, name="help", description="Show help for bot")
+async def help(interaction: discord.Interaction):
+    generate_parameters = [
+        {
+            "name": "prompt",
+            "value": "A description of what you'd like the machine to generate.",
+            "condition": "required | string",
+        },
+        {
+            "name": "steps",
+            "value": "How many steps to spend generating (diffusing) your image.",
+            "condition": "integer | min: 1 | max: 100 | default: 45",
+        },
+        {
+            "name": "seed",
+            "value": "The seed used to generate your image.",
+            "condition": "integer | min: 0 | max: 2147483647 | default: random integer",
+        },
+        {
+            "name": "width",
+            "value": "The width of the generated image.",
+            "condition": f"integer | min: {model_settings.model_image_minimum_size} | max: {model_settings.model_image_maximum_size} | default: {model_settings.model_image_minimum_size}",
+        },
+        {
+            "name": "height",
+            "value": "The height of the generated image.",
+            "condition": f"integer | min: {model_settings.model_image_minimum_size} | max: {model_settings.model_image_maximum_size} | default: {model_settings.model_image_minimum_size}",
+        },
+        {
+            "name": "images",
+            "value": "How many images you wish to generate.",
+            "condition": "integer | min: 1 | max: 4 | default: 2",
+        },
+        {
+            "name": "guidance_scale",
+            "value": "How much the image will be like your prompt. Higher values keep your image closer to your prompt.",
+            "condition": "number | min: 0 | max: 20 | default: 7",
+        },
+    ]
+    generate_title = "/generate"
+    generate_description = "\n>".join(
+        [f" - `{each['name']}` \n> {each['value']}\n> {each['condition']}" for each in generate_parameters]
+    )
+
+    content = f"**{generate_title}** \n>{generate_description}"
+    await interaction.response.send_message(content=content)
+
+
 client.run(discord_settings.discord_bot_token)
