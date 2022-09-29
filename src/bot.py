@@ -156,10 +156,14 @@ async def generate(
                         ]
                         view = View(timeout=None)
                         for i in range(image_generation_request.images):
-                            button_list[i].callback = on_click_button(result[str(i + 1)]["url"])
+                            if result[str(i + 1)]["is_filtered"]:
+                                button_list[i].callback = on_click_button(result[str(i + 1)]["origin_url"])
+                            else:
+                                button_list[i].callback = on_click_button(result[str(i + 1)]["url"])
                             view.add_item(button_list[i])
                         message_embed.set_image(url=result["grid"]["url"])
                         if len(warning_message_list) != 0:
+                            warning_message_list.insert(0, f"task id: {task_id}")
                             message_embed.colour = discord.Colour.orange()
                             message_embed.description = "\n".join(warning_message_list)
                             await interaction.edit_original_response(
@@ -169,9 +173,13 @@ async def generate(
                                 view=view,
                             )
                         else:
+                            content_message = f"{user_mention} Your task is completed."
                             message_embed.colour = discord.Colour.green()
+                            if sum([each["is_filtered"] for each in result.values()]):
+                                content_message += "\nPotential NSFW content was detected in one or more images. A black image will be returned instead.\nIf you want to have the original image, press the button below."
+                                message_embed.colour = discord.Colour.orange()
                             await interaction.edit_original_response(
-                                content=f"{user_mention} Your task is completed.",
+                                content=content_message,
                                 embed=message_embed,
                                 allowed_mentions=mentions,
                                 view=view,
