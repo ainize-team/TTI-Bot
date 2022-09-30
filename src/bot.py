@@ -165,7 +165,7 @@ async def generate(
                         if sum([each["is_filtered"] for each in result.values()]):
                             warning_message_list.append("Potential NSFW content was detected in one or more images.")
                             warning_message_list.append(
-                                "If you want to have the original image, press the button below."
+                                "If you want to see the original image, press the button below."
                             )
                         if len(warning_message_list) != 0:
                             warning_message_list.insert(0, f"task_id: {task_id}")
