@@ -59,13 +59,13 @@ async def generate(
                 seed = random.randint(0, 2147483647)
             warning_message_list = []
             if width % model_settings.model_image_unit_size != 0:
-                warning_message_list.append("width is a multiple of {model_settings.model_image_unit_size}")
+                warning_message_list.append(f"width is a multiple of {model_settings.model_image_unit_size}")
                 warning_message_list.append(
                     f"change width value from {width} to {(width // model_settings.model_image_unit_size) * model_settings.model_image_unit_size}"
                 )
                 width = (width // model_settings.model_image_unit_size) * model_settings.model_image_unit_size
             if height % model_settings.model_image_unit_size != 0:
-                warning_message_list.append("height is a multiple of {model_settings.model_image_unit_size}")
+                warning_message_list.append(f"height is a multiple of {model_settings.model_image_unit_size}")
                 warning_message_list.append(
                     f"change height value from {height} to {(height // model_settings.model_image_unit_size) * model_settings.model_image_unit_size}"
                 )
@@ -116,7 +116,7 @@ async def generate(
             message_embed = discord.Embed(
                 title=f"Prompt: {image_generation_request.prompt}",
                 colour=discord.Colour.blue(),
-                description=f"task id: {task_id}",
+                description=f"task_id: {task_id}",
             )
             await interaction.response.send_message(
                 embed=message_embed,
@@ -156,10 +156,19 @@ async def generate(
                         ]
                         view = View(timeout=None)
                         for i in range(image_generation_request.images):
-                            button_list[i].callback = on_click_button(result[str(i + 1)]["url"])
+                            if result[str(i + 1)]["is_filtered"]:
+                                button_list[i].callback = on_click_button(result[str(i + 1)]["origin_url"])
+                            else:
+                                button_list[i].callback = on_click_button(result[str(i + 1)]["url"])
                             view.add_item(button_list[i])
                         message_embed.set_image(url=result["grid"]["url"])
+                        if sum([each["is_filtered"] for each in result.values()]):
+                            warning_message_list.append("Potential NSFW content was detected in one or more images.")
+                            warning_message_list.append(
+                                "If you want to see the original image, press the button below."
+                            )
                         if len(warning_message_list) != 0:
+                            warning_message_list.insert(0, f"task_id: {task_id}")
                             message_embed.colour = discord.Colour.orange()
                             message_embed.description = "\n".join(warning_message_list)
                             await interaction.edit_original_response(
@@ -169,9 +178,10 @@ async def generate(
                                 view=view,
                             )
                         else:
+                            content_message = f"{user_mention} Your task is completed."
                             message_embed.colour = discord.Colour.green()
                             await interaction.edit_original_response(
-                                content=f"{user_mention} Your task is completed.",
+                                content=content_message,
                                 embed=message_embed,
                                 allowed_mentions=mentions,
                                 view=view,
