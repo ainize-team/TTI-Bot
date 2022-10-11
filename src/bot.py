@@ -1,32 +1,28 @@
-import asyncio
 import json
-import logging
-import logging.handlers
 import random
 from typing import Optional
 
 import discord
-import requests
 from discord import app_commands
 from discord.ui import Button, View
-from pydantic import HttpUrl, ValidationError
+from pydantic import ValidationError
 
 from client import TextToImageClient
-from enums import ResponseStatusEnum
-from schemas import ImageGenerationRequest
 from settings import discord_settings, model_settings
+from utils import (
+    build_error_message,
+    build_message,
+    get_logger,
+    get_results,
+    individual_image_button,
+    post_req,
+    preprocess_data,
+)
 
 
-GUILD = discord.Object(id=discord_settings.discord_guild_id)
+GUILD = discord.Object(id=discord_settings.guild_id)
 
-
-logger = logging.getLogger(__name__)
-handler = logging.StreamHandler()
-dt_fmt = "%Y-%m-%d %H:%M:%S"
-formatter = logging.Formatter("[{asctime}] [{levelname:<8}] {name}: {message}", dt_fmt, style="{")
-handler.setFormatter(formatter)
-logger.setLevel(logging.INFO)
-logger.addHandler(handler)
+logger = get_logger(__name__)
 
 intents = discord.Intents.default()
 client = TextToImageClient(intents=intents, guild=GUILD)
@@ -47,30 +43,17 @@ async def generate(
     prompt: str,
     steps: Optional[int] = 45,
     seed: Optional[int] = None,
-    width: Optional[int] = model_settings.model_image_minimum_size,
-    height: Optional[int] = model_settings.model_image_minimum_size,
+    width: Optional[int] = model_settings.image_minimum_size,
+    height: Optional[int] = model_settings.image_minimum_size,
     images: Optional[int] = 2,
     guidance_scale: Optional[float] = 7.0,
 ):
     logger.info(f"{interaction.user.name} generate image")
     try:
+        if seed is None:
+            seed = random.randint(0, 2147483647)
         try:
-            if seed is None:
-                seed = random.randint(0, 2147483647)
-            warning_message_list = []
-            if width % model_settings.model_image_unit_size != 0:
-                warning_message_list.append(f"width is a multiple of {model_settings.model_image_unit_size}")
-                warning_message_list.append(
-                    f"change width value from {width} to {(width // model_settings.model_image_unit_size) * model_settings.model_image_unit_size}"
-                )
-                width = (width // model_settings.model_image_unit_size) * model_settings.model_image_unit_size
-            if height % model_settings.model_image_unit_size != 0:
-                warning_message_list.append(f"height is a multiple of {model_settings.model_image_unit_size}")
-                warning_message_list.append(
-                    f"change height value from {height} to {(height // model_settings.model_image_unit_size) * model_settings.model_image_unit_size}"
-                )
-                height = (height // model_settings.model_image_unit_size) * model_settings.model_image_unit_size
-            image_generation_request = ImageGenerationRequest(
+            image_generation_request, warning_message_list = preprocess_data(
                 prompt=prompt,
                 steps=steps,
                 seed=seed,
@@ -86,136 +69,106 @@ async def generate(
                 msg = error["msg"]
                 error_message_list.append(f"{loc} : {msg}")
             error_message = "\n".join(error_message_list)
-            error_embed = discord.Embed(
-                title="Input Validation Error", colour=discord.Colour.red(), description=error_message
-            )
+            error_embed = build_error_message(title="Input Validation Error", description=error_message)
             logger.error(f"{interaction.user.name} ValidationError")
             await interaction.response.send_message(embed=error_embed)
             return
         except Exception as unknown_error:
-            error_embed = discord.Embed(
-                title="Unknown Error",
-                colour=discord.Colour.red(),
-                description=f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}",
+            error_message = (
+                f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}"
             )
+            error_embed = build_error_message(title="Unknown Error", description=error_message)
             await interaction.response.send_message(embed=error_embed)
             return
-
         logger.info(f"{interaction.user.name} generate image - request task")
         request_data = image_generation_request.dict()
         logger.info(f"Data : {request_data}")
-        post_res = requests.post(
-            f"{model_settings.model_endpoint}/generate",
-            headers={"Content-Type": "application/json", "accept": "application/json"},
-            data=json.dumps(request_data),
-        )
-        if post_res.status_code == 200:
-            task_id = post_res.json()["task_id"]
+        is_success, res = post_req(url=f"{model_settings.endpoint}/generate", data=request_data)
+        if is_success:
+            task_id = res["task_id"]
             user_mention = interaction.user.mention
             mentions = discord.AllowedMentions(users=True)
-            message_embed = discord.Embed(
+            message_embed = build_message(
                 title=f"Prompt: {image_generation_request.prompt}",
-                colour=discord.Colour.blue(),
                 description=f"task_id: {task_id}",
+                colour=discord.Colour.blue(),
             )
             await interaction.response.send_message(
                 embed=message_embed,
                 content=f"{user_mention} Your task is successfully requested.",
                 allowed_mentions=mentions,
             )
-            prev_status: ResponseStatusEnum = ResponseStatusEnum.PENDING
-            for step in range(300):
-                logger.info(f"Step : {step}/300")
-                get_res = requests.get(
-                    f"{model_settings.model_endpoint}/result/{task_id}",
-                    headers={
-                        "accept": "application/json",
-                    },
-                )
-                if get_res.status_code == 200:
-                    status = get_res.json()["status"]
-                    if status == ResponseStatusEnum.COMPLETED:
-
-                        def on_click_button(image_url: HttpUrl):
-                            async def call_back(interaction: discord.Interaction):
-
-                                embed = discord.Embed(
-                                    title=f"Prompt: {image_generation_request.prompt}",
-                                    colour=discord.Colour.green(),
-                                    description=f"task id: {task_id}",
-                                )
-                                embed.set_image(url=image_url)
-                                await interaction.response.send_message(embed=embed, ephemeral=True)
-
-                            return call_back
-
-                        result = get_res.json()["result"]
-                        button_list = [
-                            Button(label=f"Image #{i + 1}", style=discord.ButtonStyle.gray)
-                            for i in range(image_generation_request.images)
-                        ]
-                        view = View(timeout=None)
-                        for i in range(image_generation_request.images):
-                            if result[str(i + 1)]["is_filtered"]:
-                                button_list[i].callback = on_click_button(result[str(i + 1)]["origin_url"])
-                            else:
-                                button_list[i].callback = on_click_button(result[str(i + 1)]["url"])
-                            view.add_item(button_list[i])
-                        message_embed.set_image(url=result["grid"]["url"])
-                        if sum([each["is_filtered"] for each in result.values()]):
-                            warning_message_list.append("Potential NSFW content was detected in one or more images.")
-                            warning_message_list.append(
-                                "If you want to see the original image, press the button below."
-                            )
-                        if len(warning_message_list) != 0:
-                            warning_message_list.insert(0, f"task_id: {task_id}")
-                            message_embed.colour = discord.Colour.orange()
-                            message_embed.description = "\n".join(warning_message_list)
-                            await interaction.edit_original_response(
-                                content=f"{user_mention} Your task is completed.",
-                                embed=message_embed,
-                                allowed_mentions=mentions,
-                                view=view,
-                            )
-                        else:
-                            content_message = f"{user_mention} Your task is completed."
-                            message_embed.colour = discord.Colour.green()
-                            await interaction.edit_original_response(
-                                content=content_message,
-                                embed=message_embed,
-                                allowed_mentions=mentions,
-                                view=view,
-                            )
-                        return
-                    elif status != prev_status:
-                        await interaction.edit_original_response(
-                            embed=message_embed,
-                            content=f"{user_mention} Your task's status is updated from {prev_status} to {status}",
-                            allowed_mentions=mentions,
+            is_success, res = await get_results(
+                url=f"{model_settings.endpoint}/result/{task_id}",
+                n=300,
+                user=user_mention,
+                interaction=interaction,
+                message=message_embed,
+            )
+            if is_success:
+                button_list = [
+                    Button(label=f"Image #{i + 1}", style=discord.ButtonStyle.gray)
+                    for i in range(image_generation_request.images)
+                ]
+                view = View(timeout=None)
+                result = res["result"]
+                for i in range(image_generation_request.images):
+                    if result[str(i + 1)]["is_filtered"]:
+                        button_list[i].callback = individual_image_button(
+                            result[str(i + 1)]["origin_url"],
+                            title=f"Prompt: {image_generation_request.prompt}",
+                            description=f"task id: {task_id}",
+                            user=user_mention,
                         )
-                        prev_status = status
-                    await asyncio.sleep(1)
+                    else:
+                        button_list[i].callback = individual_image_button(
+                            result[str(i + 1)]["url"],
+                            title=f"Prompt: {image_generation_request.prompt}",
+                            description=f"task id: {task_id}",
+                            user=user_mention,
+                        )
+                    view.add_item(button_list[i])
+
+                message_embed.set_image(url=result["grid"]["url"])
+                if sum([each["is_filtered"] for each in result.values()]):
+                    warning_message_list.append("Potential NSFW content was detected in one or more images.")
+                    warning_message_list.append("If you want to see the original image, press the button below.")
+                if len(warning_message_list) != 0:
+                    warning_message_list.insert(0, f"task_id: {task_id}")
+                    message_embed.colour = discord.Colour.orange()
+                    message_embed.description = "\n".join(warning_message_list)
+                    await interaction.edit_original_response(
+                        content=f"{user_mention} Your task is completed.",
+                        embed=message_embed,
+                        allowed_mentions=mentions,
+                        view=view,
+                    )
+                else:
+                    content_message = f"{user_mention} Your task is completed."
+                    message_embed.colour = discord.Colour.green()
+                    await interaction.edit_original_response(
+                        content=content_message,
+                        embed=message_embed,
+                        allowed_mentions=mentions,
+                        view=view,
+                    )
+                return
             else:
-                error_embed = discord.Embed(
+                error_embed = build_error_message(
                     title="TimeOut Error",
-                    colour=discord.Colour.red(),
                     description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id{task_id}.",
                 )
                 await interaction.edit_original_response(embed=error_embed)
+                return
         else:
-            logger.error("Error :", post_res.text)
-            error_embed = discord.Embed(
-                title="Request Error",
-                colour=discord.Colour.red(),
-                description="The request failed.\nPlease try again in a momentarily.\nIf the situation repeats, please let our community manager know.",
-            )
+            error_message = "The request failed.\nPlease try again in a momentarily.\nIf the situation repeats, please let our community manager know."
+            error_embed = build_error_message(title="Request Error", description=error_message)
             await interaction.response.send_message(embed=error_embed)
     except Exception as unknown_error:
-        error_embed = discord.Embed(
-            title="Unknown Error",
-            colour=discord.Colour.red(),
-            description=f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}",
+        error_message = (
+            f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}"
         )
+        error_embed = build_error_message(title="Unknown Error", description=error_message)
         await interaction.response.send_message(embed=error_embed)
 
 
@@ -241,12 +194,12 @@ async def help(interaction: discord.Interaction):
         {
             "name": "width",
             "value": "The width of the generated image.",
-            "condition": f"integer | min: {model_settings.model_image_minimum_size} | max: {model_settings.model_image_maximum_size} | default: {model_settings.model_image_minimum_size}",
+            "condition": f"integer | min: {model_settings.image_minimum_size} | max: {model_settings.image_maximum_size} | default: {model_settings.image_minimum_size}",
         },
         {
             "name": "height",
             "value": "The height of the generated image.",
-            "condition": f"integer | min: {model_settings.model_image_minimum_size} | max: {model_settings.model_image_maximum_size} | default: {model_settings.model_image_minimum_size}",
+            "condition": f"integer | min: {model_settings.image_minimum_size} | max: {model_settings.image_maximum_size} | default: {model_settings.image_minimum_size}",
         },
         {
             "name": "images",
@@ -268,4 +221,4 @@ async def help(interaction: discord.Interaction):
     await interaction.response.send_message(content=content)
 
 
-client.run(discord_settings.discord_bot_token)
+client.run(discord_settings.bot_token)
