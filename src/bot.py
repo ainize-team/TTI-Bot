@@ -1,6 +1,4 @@
 import json
-import logging
-import logging.handlers
 import random
 from typing import Optional
 
@@ -11,19 +9,20 @@ from pydantic import ValidationError
 
 from client import TextToImageClient
 from settings import discord_settings, model_settings
-from utils import build_error_message, build_message, get_results, individual_image_button, post_req, preprocess_data
+from utils import (
+    build_error_message,
+    build_message,
+    get_logger,
+    get_results,
+    individual_image_button,
+    post_req,
+    preprocess_data,
+)
 
 
 GUILD = discord.Object(id=discord_settings.discord_guild_id)
 
-
-logger = logging.getLogger(__name__)
-handler = logging.StreamHandler()
-dt_fmt = "%Y-%m-%d %H:%M:%S"
-formatter = logging.Formatter("[{asctime}] [{levelname:<8}] {name}: {message}", dt_fmt, style="{")
-handler.setFormatter(formatter)
-logger.setLevel(logging.INFO)
-logger.addHandler(handler)
+logger = get_logger(__name__)
 
 intents = discord.Intents.default()
 client = TextToImageClient(intents=intents, guild=GUILD)
