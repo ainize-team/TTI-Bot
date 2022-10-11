@@ -103,7 +103,7 @@ async def get_results(
     prev_status: ResponseStatusEnum = ResponseStatusEnum.PENDING
     mentions = discord.AllowedMentions(users=True)
     for step in range(n):
-        logger.info(f"Step : {step}/300")
+        logger.info(f"Step : {step}/{n}")
         is_success, res = get_req(url)
         if not is_success:
             continue
