@@ -1,17 +1,10 @@
-import logging
-import logging.handlers
-
 import discord
 from discord import app_commands
 
+from utils import get_logger
 
-logger = logging.getLogger(__name__)
-handler = logging.StreamHandler()
-dt_fmt = "%Y-%m-%d %H:%M:%S"
-formatter = logging.Formatter("[{asctime}] [{levelname:<8}] {name}: {message}", dt_fmt, style="{")
-handler.setFormatter(formatter)
-logger.setLevel(logging.INFO)
-logger.addHandler(handler)
+
+logger = get_logger(__name__)
 
 
 class TextToImageClient(discord.Client):
