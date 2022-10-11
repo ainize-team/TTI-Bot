@@ -7,7 +7,6 @@ from typing import Callable, Dict, List, Tuple
 import discord
 import requests
 from discord.ui import Button, View
-from pydantic import HttpUrl
 
 from enums import ResponseStatusEnum
 from schemas import ImageGenerationRequest
@@ -122,7 +121,7 @@ async def get_results(
         return False, {}
 
 
-def individual_image_button(image_url: HttpUrl, title: str, description: str, user) -> Callable:
+def individual_image_button(image_url: str, title: str, description: str, user) -> Callable:
     mentions = discord.AllowedMentions(users=True)
 
     async def call_back(interaction: discord.Interaction):
