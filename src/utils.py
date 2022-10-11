@@ -32,18 +32,18 @@ def preprocess_data(
     prompt: str, steps: int, seed: int, width: int, height: int, images: int, guidance_scale: float
 ) -> Tuple[ImageGenerationRequest, List[str]]:
     warning_message_list = []
-    if width % model_settings.model_image_unit_size != 0:
-        warning_message_list.append(f"width is a multiple of {model_settings.model_image_unit_size}")
+    if width % model_settings.image_unit_size != 0:
+        warning_message_list.append(f"width is a multiple of {model_settings.image_unit_size}")
         warning_message_list.append(
-            f"change width value from {width} to {(width // model_settings.model_image_unit_size) * model_settings.model_image_unit_size}"
+            f"change width value from {width} to {(width // model_settings.image_unit_size) * model_settings.image_unit_size}"
         )
-        width = (width // model_settings.model_image_unit_size) * model_settings.model_image_unit_size
-    if height % model_settings.model_image_unit_size != 0:
-        warning_message_list.append(f"height is a multiple of {model_settings.model_image_unit_size}")
+        width = (width // model_settings.image_unit_size) * model_settings.image_unit_size
+    if height % model_settings.image_unit_size != 0:
+        warning_message_list.append(f"height is a multiple of {model_settings.image_unit_size}")
         warning_message_list.append(
-            f"change height value from {height} to {(height // model_settings.model_image_unit_size) * model_settings.model_image_unit_size}"
+            f"change height value from {height} to {(height // model_settings.image_unit_size) * model_settings.image_unit_size}"
         )
-        height = (height // model_settings.model_image_unit_size) * model_settings.model_image_unit_size
+        height = (height // model_settings.image_unit_size) * model_settings.image_unit_size
     image_generation_request = ImageGenerationRequest(
         prompt=prompt,
         steps=steps,
@@ -128,7 +128,7 @@ def individual_image_button(image_url: HttpUrl, title: str, description: str, us
     async def call_back(interaction: discord.Interaction):
         async def upsacle(interaction: discord.Interaction):
             is_success, res = post_req(
-                url=f"{model_settings.model_upscale_endpoint}/upscale/url?url={image_url}",
+                url=f"{model_settings.upscale_endpoint}/upscale/url?url={image_url}",
                 headers={"accept": "application/json"},
                 data={},
             )
@@ -144,7 +144,7 @@ def individual_image_button(image_url: HttpUrl, title: str, description: str, us
                     ephemeral=True,
                 )
                 is_success, res = await get_results(
-                    url=f"{model_settings.model_upscale_endpoint}/result/{task_id}",
+                    url=f"{model_settings.upscale_endpoint}/result/{task_id}",
                     n=300,
                     user=user,
                     interaction=interaction,

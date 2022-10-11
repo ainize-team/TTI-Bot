@@ -20,7 +20,7 @@ from utils import (
 )
 
 
-GUILD = discord.Object(id=discord_settings.discord_guild_id)
+GUILD = discord.Object(id=discord_settings.guild_id)
 
 logger = get_logger(__name__)
 
@@ -43,8 +43,8 @@ async def generate(
     prompt: str,
     steps: Optional[int] = 45,
     seed: Optional[int] = None,
-    width: Optional[int] = model_settings.model_image_minimum_size,
-    height: Optional[int] = model_settings.model_image_minimum_size,
+    width: Optional[int] = model_settings.image_minimum_size,
+    height: Optional[int] = model_settings.image_minimum_size,
     images: Optional[int] = 2,
     guidance_scale: Optional[float] = 7.0,
 ):
@@ -83,7 +83,7 @@ async def generate(
         logger.info(f"{interaction.user.name} generate image - request task")
         request_data = image_generation_request.dict()
         logger.info(f"Data : {request_data}")
-        is_success, res = post_req(url=f"{model_settings.model_endpoint}/generate", data=request_data)
+        is_success, res = post_req(url=f"{model_settings.endpoint}/generate", data=request_data)
         if is_success:
             task_id = res["task_id"]
             user_mention = interaction.user.mention
@@ -99,7 +99,7 @@ async def generate(
                 allowed_mentions=mentions,
             )
             is_success, res = await get_results(
-                url=f"{model_settings.model_endpoint}/result/{task_id}",
+                url=f"{model_settings.endpoint}/result/{task_id}",
                 n=300,
                 user=user_mention,
                 interaction=interaction,
@@ -194,12 +194,12 @@ async def help(interaction: discord.Interaction):
         {
             "name": "width",
             "value": "The width of the generated image.",
-            "condition": f"integer | min: {model_settings.model_image_minimum_size} | max: {model_settings.model_image_maximum_size} | default: {model_settings.model_image_minimum_size}",
+            "condition": f"integer | min: {model_settings.image_minimum_size} | max: {model_settings.image_maximum_size} | default: {model_settings.image_minimum_size}",
         },
         {
             "name": "height",
             "value": "The height of the generated image.",
-            "condition": f"integer | min: {model_settings.model_image_minimum_size} | max: {model_settings.model_image_maximum_size} | default: {model_settings.model_image_minimum_size}",
+            "condition": f"integer | min: {model_settings.image_minimum_size} | max: {model_settings.image_maximum_size} | default: {model_settings.image_minimum_size}",
         },
         {
             "name": "images",
@@ -221,4 +221,4 @@ async def help(interaction: discord.Interaction):
     await interaction.response.send_message(content=content)
 
 
-client.run(discord_settings.discord_bot_token)
+client.run(discord_settings.bot_token)

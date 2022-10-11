@@ -13,15 +13,15 @@ class ImageGenerationRequest(BaseModel):
     )
     seed: int = Field(default=1, ge=0, le=2147483647)
     width: int = Field(
-        default=model_settings.model_image_minimum_size,
-        ge=model_settings.model_image_minimum_size,
-        le=model_settings.model_image_maximum_size,
+        default=model_settings.image_minimum_size,
+        ge=model_settings.image_minimum_size,
+        le=model_settings.image_maximum_size,
         description="The width of the generated image.",
     )
     height: int = Field(
-        default=model_settings.model_image_minimum_size,
-        ge=model_settings.model_image_minimum_size,
-        le=model_settings.model_image_maximum_size,
+        default=model_settings.image_minimum_size,
+        ge=model_settings.image_minimum_size,
+        le=model_settings.image_maximum_size,
         description="The height of the generated image.",
     )
     images: int = Field(2, ge=1, le=4, description="How many images you wish to generate")
