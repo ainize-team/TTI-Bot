@@ -28,7 +28,17 @@ logger = get_logger(__name__)
 
 
 def preprocess_data(
-    prompt: str, steps: int, seed: int, width: int, height: int, images: int, guidance_scale: float
+    prompt: str,
+    user_id: str,
+    guild_id: str,
+    channel_id: str,
+    message_id: str,
+    steps: int,
+    seed: int,
+    width: int,
+    height: int,
+    images: int,
+    guidance_scale: float,
 ) -> Tuple[ImageGenerationRequest, List[str]]:
     warning_message_list = []
     if width % model_settings.image_unit_size != 0:
@@ -45,6 +55,10 @@ def preprocess_data(
         height = (height // model_settings.image_unit_size) * model_settings.image_unit_size
     image_generation_request = ImageGenerationRequest(
         prompt=prompt,
+        user_id=user_id,
+        guild_id=guild_id,
+        channel_id=channel_id,
+        message_id=message_id,
         steps=steps,
         seed=seed,
         width=width,

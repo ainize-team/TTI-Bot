@@ -8,6 +8,10 @@ class ImageGenerationRequest(BaseModel):
         ...,
         description="A description of what you'd like the machine to generate.",
     )
+    user_id: str = Field("0", description="The user's unique ID.")
+    guild_id: str = Field("0", description="The guild's ID.")
+    channel_id: str = Field("0", description="The channel ID.")
+    message_id: str = Field("0", description="The message ID.")
     steps: int = Field(
         default=45, ge=1, le=100, description="How many steps to spend generating (diffusing) your image."
     )
