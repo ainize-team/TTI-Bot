@@ -15,7 +15,7 @@ class ImageGenerationRequest(BaseModel):
     steps: int = Field(
         default=45, ge=1, le=100, description="How many steps to spend generating (diffusing) your image."
     )
-    seed: int = Field(default=1, ge=0, le=2147483647)
+    seed: int = Field(default=1, ge=0, le=4294967295)
     width: int = Field(
         default=model_settings.image_minimum_size,
         ge=model_settings.image_minimum_size,
