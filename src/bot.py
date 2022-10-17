@@ -193,7 +193,7 @@ async def generate(
         else:
             error_message = "The request failed.\nPlease try again in a momentarily.\nIf the situation repeats, please let our community manager know."
             error_embed = build_error_message(title="Request Error", description=error_message)
-            await interaction.response.edit_original_response(embed=error_embed)
+            await interaction.edit_original_response(embed=error_embed)
     except Exception as unknown_error:
         error_message = (
             f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}"
