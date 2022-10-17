@@ -119,6 +119,8 @@ async def get_results(
         logger.info(f"Step : {step}/{n}")
         is_success, res = get_req(url)
         if not is_success:
+            logger.error(f"Failed To Get Req : {res}")
+            await asyncio.sleep(1)
             continue
         status = res["status"]
         if status == ResponseStatusEnum.COMPLETED:
@@ -139,7 +141,7 @@ def individual_image_button(image_url: str, title: str, description: str, user) 
     mentions = discord.AllowedMentions(users=True)
 
     async def call_back(interaction: discord.Interaction):
-        async def upsacle(interaction: discord.Interaction):
+        async def upsacle(us_interaction: discord.Interaction):
             is_success, res = post_req(
                 url=f"{model_settings.upscale_endpoint}/upscale/url?url={image_url}",
                 headers={"accept": "application/json"},
@@ -150,7 +152,7 @@ def individual_image_button(image_url: str, title: str, description: str, user) 
                 message_embed = build_message(
                     title=f"Upscale > {title}", colour=discord.Colour.blue(), description=f"task id : {task_id}"
                 )
-                await interaction.response.send_message(
+                await us_interaction.response.send_message(
                     embed=message_embed,
                     content=f"{user} Your task is successfully requested.",
                     allowed_mentions=mentions,
@@ -160,7 +162,7 @@ def individual_image_button(image_url: str, title: str, description: str, user) 
                     url=f"{model_settings.upscale_endpoint}/result/{task_id}",
                     n=300,
                     user=user,
-                    interaction=interaction,
+                    interaction=us_interaction,
                     message=message_embed,
                 )
                 if is_success:
@@ -168,7 +170,7 @@ def individual_image_button(image_url: str, title: str, description: str, user) 
                     message_embed.set_image(url=output)
                     content_message = f"{user} Your task is completed."
                     message_embed.colour = discord.Colour.green()
-                    await interaction.edit_original_response(
+                    await us_interaction.edit_original_response(
                         content=content_message,
                         embed=message_embed,
                         allowed_mentions=mentions,
@@ -179,14 +181,14 @@ def individual_image_button(image_url: str, title: str, description: str, user) 
                         title="TimeOut Error",
                         description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id{task_id}.",
                     )
-                    await interaction.edit_original_response(embed=error_embed)
+                    await us_interaction.edit_original_response(embed=error_embed)
                     return
             else:
                 error_embed = build_error_message(
                     title="Upscale Request Error",
                     description="The request failed.\nPlease try again in a momentarily.\nIf the situation repeats, please let our community manager know.",
                 )
-                await interaction.response.send_message(embed=error_embed, ephemeral=True)
+                await us_interaction.response.send_message(embed=error_embed, ephemeral=True)
 
         embed = build_message(title=title, description=description, colour=discord.Colour.green())
         embed.set_image(url=image_url)
