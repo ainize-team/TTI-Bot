@@ -137,12 +137,13 @@ async def get_results(
         return False, {}
 
 
-def up_scale_image_button(image_url: str, title: str, description: str, user: str) -> Callable:
+def up_scale_image_button(image_url: str, title: str) -> Callable:
     mentions = discord.AllowedMentions(users=True)
 
-    async def call_back(get_interaction: discord.Interaction):
+    async def call_back(interaction: discord.Interaction):
+        user = interaction.user.mention
         message_embed = build_message(title=f"Upscale > {title}", colour=discord.Colour.blue(), description="")
-        await get_interaction.response.send_message(
+        await interaction.response.send_message(
             embed=message_embed,
             allowed_mentions=mentions,
             ephemeral=True,
@@ -157,7 +158,7 @@ def up_scale_image_button(image_url: str, title: str, description: str, user: st
             message_embed = build_message(
                 title=f"Upscale > {title}", colour=discord.Colour.blue(), description=f"task id : {task_id}"
             )
-            await get_interaction.edit_original_response(
+            await interaction.edit_original_response(
                 embed=message_embed,
                 content=f"{user} Your task is successfully requested.",
                 allowed_mentions=mentions,
@@ -165,8 +166,7 @@ def up_scale_image_button(image_url: str, title: str, description: str, user: st
             is_success, res = await get_results(
                 url=f"{model_settings.upscale_endpoint}/result/{task_id}",
                 n=300,
-                user=user,
-                interaction=get_interaction,
+                interaction=interaction,
                 message=message_embed,
             )
             if is_success:
@@ -174,7 +174,7 @@ def up_scale_image_button(image_url: str, title: str, description: str, user: st
                 message_embed.set_image(url=output)
                 content_message = f"{user} Your task is completed."
                 message_embed.colour = discord.Colour.green()
-                await get_interaction.edit_original_response(
+                await interaction.edit_original_response(
                     content=content_message,
                     embed=message_embed,
                     allowed_mentions=mentions,
@@ -185,27 +185,27 @@ def up_scale_image_button(image_url: str, title: str, description: str, user: st
                     title="TimeOut Error",
                     description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id{task_id}.",
                 )
-                await get_interaction.edit_original_response(embed=error_embed)
+                await interaction.edit_original_response(embed=error_embed)
                 return
         else:
             error_embed = build_error_message(
                 title="Upscale Request Error",
                 description="The request failed.\nPlease try again in a momentarily.\nIf the situation repeats, please let our community manager know.",
             )
-            await get_interaction.edit_original_response(embed=error_embed)
+            await interaction.edit_original_response(embed=error_embed)
             return
 
     return call_back
 
 
-def individual_image_button(image_url: str, title: str, description: str, user: str) -> Callable:
+def individual_image_button(image_url: str, title: str, description: str) -> Callable:
     async def call_back(get_interaction: discord.Interaction):
 
         embed = build_message(title=title, description=description, colour=discord.Colour.green())
         embed.set_image(url=image_url)
         view = View(timeout=None)
         upscale_button = Button(label="upscale", style=discord.ButtonStyle.gray)
-        upscale_button.callback = up_scale_image_button(image_url, title, description, user)
+        upscale_button.callback = up_scale_image_button(image_url, title)
         view.add_item(upscale_button)
 
         await get_interaction.response.send_message(embed=embed, ephemeral=True, view=view)
