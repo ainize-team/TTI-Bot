@@ -148,14 +148,12 @@ async def generate(
                             result[str(i + 1)]["origin_url"],
                             title=f"Prompt: {image_generation_request.prompt}",
                             description=f"task id: {task_id}",
-                            user=user_mention,
                         )
                     else:
                         button_list[i].callback = individual_image_button(
                             result[str(i + 1)]["url"],
                             title=f"Prompt: {image_generation_request.prompt}",
                             description=f"task id: {task_id}",
-                            user=user_mention,
                         )
                     view.add_item(button_list[i])
 
