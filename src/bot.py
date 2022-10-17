@@ -49,12 +49,21 @@ async def generate(
     guidance_scale: Optional[float] = 7.0,
 ):
     logger.info(f"{interaction.user.name} generate image")
+    user_id = str(interaction.user.id)
+    guild_id = str(interaction.guild.id)
+    channel_id = str(interaction.channel.id)
+    message_id = "0"  # interaction.message.id
+    logger.info(f"{user_id} {guild_id} {channel_id} {message_id}")
     try:
         if seed is None:
-            seed = random.randint(0, 2147483647)
+            seed = random.randint(0, 4294967295)
         try:
             image_generation_request, warning_message_list = preprocess_data(
                 prompt=prompt,
+                user_id=user_id,
+                guild_id=guild_id,
+                channel_id=channel_id,
+                message_id=message_id,
                 steps=steps,
                 seed=seed,
                 width=width,
@@ -81,19 +90,40 @@ async def generate(
             await interaction.response.send_message(embed=error_embed)
             return
         logger.info(f"{interaction.user.name} generate image - request task")
+
+        message_embed = build_message(
+            title=f"Prompt: {image_generation_request.prompt}",
+            description="",
+            colour=discord.Colour.blue(),
+        )
+        mentions = discord.AllowedMentions(users=True)
+        await interaction.response.send_message(
+            embed=message_embed,
+            allowed_mentions=mentions,
+        )
+    except Exception as unknown_error:
+        error_message = (
+            f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}"
+        )
+        error_embed = build_error_message(title="Unknown Error", description=error_message)
+        await interaction.response.send_message(embed=error_embed)
+        return
+    try:
+        message = await interaction.original_response()
+        message_id = str(message.id)
+        image_generation_request.message_id = message_id
         request_data = image_generation_request.dict()
         logger.info(f"Data : {request_data}")
         is_success, res = post_req(url=f"{model_settings.endpoint}/generate", data=request_data)
         if is_success:
             task_id = res["task_id"]
             user_mention = interaction.user.mention
-            mentions = discord.AllowedMentions(users=True)
             message_embed = build_message(
                 title=f"Prompt: {image_generation_request.prompt}",
                 description=f"task_id: {task_id}",
                 colour=discord.Colour.blue(),
             )
-            await interaction.response.send_message(
+            await interaction.edit_original_response(
                 embed=message_embed,
                 content=f"{user_mention} Your task is successfully requested.",
                 allowed_mentions=mentions,
@@ -163,13 +193,13 @@ async def generate(
         else:
             error_message = "The request failed.\nPlease try again in a momentarily.\nIf the situation repeats, please let our community manager know."
             error_embed = build_error_message(title="Request Error", description=error_message)
-            await interaction.response.send_message(embed=error_embed)
+            await interaction.response.edit_original_response(embed=error_embed)
     except Exception as unknown_error:
         error_message = (
             f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}"
         )
         error_embed = build_error_message(title="Unknown Error", description=error_message)
-        await interaction.response.send_message(embed=error_embed)
+        await interaction.edit_original_response(embed=error_embed)
 
 
 # TODO: Find Better way

@@ -34,6 +34,13 @@ docker run -d --name tti-bot \
      tti-bot
 ```
 
+Or, you can use the [.env file](./.env.sample) to run as follows.
+```
+docker run -d --name tti-bot \
+     --env-file {.env_file_path} \
+     tti-bot
+```
+
 ## License
 
 [![Licence](https://img.shields.io/github/license/ainize-team/TTI-Bot.svg)](./LICENSE)
