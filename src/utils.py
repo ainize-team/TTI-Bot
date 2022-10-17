@@ -166,6 +166,7 @@ def up_scale_image_button(image_url: str, title: str) -> Callable:
             is_success, res = await get_results(
                 url=f"{model_settings.upscale_endpoint}/result/{task_id}",
                 n=300,
+                user=user,
                 interaction=interaction,
                 message=message_embed,
             )
@@ -199,8 +200,7 @@ def up_scale_image_button(image_url: str, title: str) -> Callable:
 
 
 def individual_image_button(image_url: str, title: str, description: str) -> Callable:
-    async def call_back(get_interaction: discord.Interaction):
-
+    async def call_back(interaction: discord.Interaction):
         embed = build_message(title=title, description=description, colour=discord.Colour.green())
         embed.set_image(url=image_url)
         view = View(timeout=None)
@@ -208,6 +208,6 @@ def individual_image_button(image_url: str, title: str, description: str) -> Cal
         upscale_button.callback = up_scale_image_button(image_url, title)
         view.add_item(upscale_button)
 
-        await get_interaction.response.send_message(embed=embed, ephemeral=True, view=view)
+        await interaction.response.send_message(embed=embed, ephemeral=True, view=view)
 
     return call_back
