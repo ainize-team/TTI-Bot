@@ -123,7 +123,6 @@ async def generate(
                 description=f"task_id: {task_id}",
                 colour=discord.Colour.blue(),
             )
-            logger.info("Here2")
             await interaction.edit_original_response(
                 embed=message_embed,
                 content=f"{user_mention} Your task is successfully requested.",
