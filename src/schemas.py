@@ -3,17 +3,20 @@ from pydantic import BaseModel, Field
 from settings import model_settings
 
 
-class ImageGenerationRequest(BaseModel):
+class ImageGenerationDiscordParams(BaseModel):
+    user_id: str = Field(..., description="The user's unique ID.")
+    guild_id: str = Field(..., description="The guild's ID.")
+    channel_id: str = Field(..., description="The channel ID.")
+    message_id: str = Field(..., description="The message ID.")
+
+
+class ImageGenerationParams(BaseModel):
     prompt: str = Field(
         ...,
         description="A description of what you'd like the machine to generate.",
     )
-    user_id: str = Field("0", description="The user's unique ID.")
-    guild_id: str = Field("0", description="The guild's ID.")
-    channel_id: str = Field("0", description="The channel ID.")
-    message_id: str = Field("0", description="The message ID.")
     steps: int = Field(
-        default=45, ge=1, le=100, description="How many steps to spend generating (diffusing) your image."
+        default=50, ge=1, le=100, description="How many steps to spend generating (diffusing) your image."
     )
     seed: int = Field(default=1, ge=0, le=4294967295)
     width: int = Field(
@@ -35,3 +38,8 @@ class ImageGenerationRequest(BaseModel):
         le=20,
         description="How much the image will be like your prompt. Higher values keep your image closer to your prompt.",
     )
+
+
+class ImageGenerationRequest(BaseModel):
+    discord: ImageGenerationDiscordParams
+    params: ImageGenerationParams

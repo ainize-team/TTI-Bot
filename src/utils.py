@@ -9,7 +9,7 @@ import requests
 from discord.ui import Button, View
 
 from enums import ResponseStatusEnum
-from schemas import ImageGenerationRequest
+from schemas import ImageGenerationParams
 from settings import model_settings
 
 
@@ -29,17 +29,13 @@ logger = get_logger(__name__)
 
 def preprocess_data(
     prompt: str,
-    user_id: str,
-    guild_id: str,
-    channel_id: str,
-    message_id: str,
     steps: int,
     seed: int,
     width: int,
     height: int,
     images: int,
     guidance_scale: float,
-) -> Tuple[ImageGenerationRequest, List[str]]:
+) -> Tuple[ImageGenerationParams, List[str]]:
     warning_message_list = []
     if width % model_settings.image_unit_size != 0:
         warning_message_list.append(f"width is a multiple of {model_settings.image_unit_size}")
@@ -53,12 +49,8 @@ def preprocess_data(
             f"change height value from {height} to {(height // model_settings.image_unit_size) * model_settings.image_unit_size}"
         )
         height = (height // model_settings.image_unit_size) * model_settings.image_unit_size
-    image_generation_request = ImageGenerationRequest(
+    image_generation_request = ImageGenerationParams(
         prompt=prompt,
-        user_id=user_id,
-        guild_id=guild_id,
-        channel_id=channel_id,
-        message_id=message_id,
         steps=steps,
         seed=seed,
         width=width,
@@ -156,7 +148,7 @@ def up_scale_image_button(image_url: str, title: str) -> Callable:
         if is_success:
             task_id = res["task_id"]
             message_embed = build_message(
-                title=f"Upscale > {title}", colour=discord.Colour.blue(), description=f"task id : {task_id}"
+                title=f"Upscale > {title}", colour=discord.Colour.blue(), description=f"task id: {task_id}"
             )
             await interaction.edit_original_response(
                 embed=message_embed,
@@ -184,7 +176,7 @@ def up_scale_image_button(image_url: str, title: str) -> Callable:
             else:
                 error_embed = build_error_message(
                     title="TimeOut Error",
-                    description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id{task_id}.",
+                    description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id: {task_id}.",
                 )
                 await interaction.edit_original_response(embed=error_embed)
                 return
