@@ -8,7 +8,7 @@ from discord.ui import Button, View
 from pydantic import ValidationError
 
 from client import TextToImageClient
-from enums import ResponseStatusEnum
+from enums import ErrorMessage, ErrorTitle, ResponseStatusEnum, WarningMessages
 from schemas import ImageGenerationDiscordParams
 from settings import discord_settings, model_settings
 from utils import (
@@ -33,13 +33,13 @@ client = TextToImageClient(intents=intents, guild=GUILD)
 
 @client.tree.command(guild=GUILD, name="generate", description="Generate Image")
 @app_commands.describe(
-    prompt="try adding increments to your prompt such as 'oil on canvas', 'a painting', 'a book cover'",
-    steps="more steps can increase quality but will take longer to generate",
+    prompt="Try adding increments to your prompt such as 'oil on canvas', 'a painting', 'a book cover'",
+    steps="More steps can increase quality but will take longer to generate",
     seed="Random seed",
     width="Image width",
     height="Image Height",
     images="How many images you wish to generate",
-    guidance_scale="how much the prompt will influence the results",
+    guidance_scale="How much the prompt will influence the results",
 )
 async def generate(
     interaction: discord.Interaction,
@@ -77,15 +77,14 @@ async def generate(
                 msg = error["msg"]
                 error_message_list.append(f"{loc} : {msg}")
             error_message = "\n".join(error_message_list)
-            error_embed = build_error_message(title="Input Validation Error", description=error_message)
+            error_embed = build_error_message(title=ErrorTitle.INPUT_VALIDATION, description=error_message)
             logger.error(f"{interaction.user.name} ValidationError")
             await interaction.response.send_message(embed=error_embed)
             return
         except Exception as unknown_error:
-            error_message = (
-                f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}"
-            )
-            error_embed = build_error_message(title="Unknown Error", description=error_message)
+            error_message = ErrorMessage.UNKNOWN
+            error_message += f"Error: {unknown_error}"
+            error_embed = build_error_message(title=ErrorTitle.UNKNOWN, description=error_message)
             await interaction.response.send_message(embed=error_embed)
             return
         logger.info(f"{interaction.user.name} generate image - request task")
@@ -101,10 +100,9 @@ async def generate(
             allowed_mentions=mentions,
         )
     except Exception as unknown_error:
-        error_message = (
-            f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}"
-        )
-        error_embed = build_error_message(title="Unknown Error", description=error_message)
+        error_message = ErrorMessage.UNKNOWN
+        error_message += f"Error: {unknown_error}"
+        error_embed = build_error_message(title=ErrorTitle.UNKNOWN, description=error_message)
         await interaction.response.send_message(embed=error_embed)
         return
     try:
@@ -116,7 +114,6 @@ async def generate(
             channel_id=channel_id,
             message_id=message_id,
         )
-        # request_data = image_generation_request.dict()
         request_data = {
             "discord": discord_data.dict(),
             "params": image_generation_request.dict(),
@@ -167,8 +164,7 @@ async def generate(
 
                 message_embed.set_image(url=result["grid"]["url"])
                 if sum([each["is_filtered"] for each in result.values()]):
-                    warning_message_list.append("Potential NSFW content was detected in one or more images.")
-                    warning_message_list.append("If you want to see the original image, press the button below.")
+                    warning_message_list.append(WarningMessages.NSFW)
                 if len(warning_message_list) != 0:
                     warning_message_list.insert(0, f"task_id: {task_id}")
                     message_embed.colour = discord.Colour.orange()
@@ -191,8 +187,8 @@ async def generate(
                 return
             else:
                 error_embed = build_error_message(
-                    title="TimeOut Error",
-                    description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id{task_id}.",
+                    title=ErrorTitle.TIMEOUT,
+                    description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id {task_id}.",
                 )
                 await interaction.edit_original_response(embed=error_embed)
                 return
@@ -201,9 +197,8 @@ async def generate(
             error_embed = build_error_message(title="Request Error", description=error_message)
             await interaction.edit_original_response(embed=error_embed)
     except Exception as unknown_error:
-        error_message = (
-            f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}"
-        )
+        error_message = ErrorMessage.UNKNOWN
+        error_message += f"Error: {unknown_error}"
         error_embed = build_error_message(title="Unknown Error", description=error_message)
         await interaction.edit_original_response(embed=error_embed)
 
@@ -241,15 +236,15 @@ async def result(
                 result = res["result"]
             else:
                 error_embed = build_error_message(
-                    title="Requested task was not found",
-                    description=f"Your task id({task_id}) may be wrong. Please input correct task id.",
+                    title=ErrorTitle.WRONG_TASK_ID,
+                    description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
                 )
                 await interaction.response.send_message(embed=error_embed)
                 return
         else:
             error_embed = build_error_message(
-                title="Requested task was not found",
-                description=f"Your task id({task_id}) may be wrong. Please input correct task id.",
+                title=ErrorTitle.WRONG_TASK_ID,
+                description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
             )
             await interaction.response.send_message(embed=error_embed)
             return
@@ -280,8 +275,7 @@ async def result(
         )
         message_embed.set_image(url=result["grid"]["url"])
         if sum([each["is_filtered"] for each in result.values()]):
-            warning_message_list.append("Potential NSFW content was detected in one or more images.")
-            warning_message_list.append("If you want to see the original image, press the button below.")
+            warning_message_list.append(WarningMessages.NSFW)
 
         if len(warning_message_list) != 0:
             warning_message_list.insert(0, f"task_id: {task_id}")
@@ -304,11 +298,59 @@ async def result(
             )
         return
     except Exception as unknown_error:
-        error_message = (
-            f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}"
-        )
+        error_message = ErrorMessage.UNKNOWN
+        error_message += f"Error: {unknown_error}"
         error_embed = build_error_message(title="Unknown Error", description=error_message)
         await interaction.response.send_message(embed=error_embed)
+
+
+# TODO: Find Better way
+@client.tree.command(guild=GUILD, name="help", description="Show help for bot")
+async def help(interaction: discord.Interaction):
+    generate_parameters = [
+        {
+            "name": "prompt",
+            "value": "A description of what you'd like the machine to generate.",
+            "condition": "required | string",
+        },
+        {
+            "name": "steps",
+            "value": "How many steps to spend generating (diffusing) your image.",
+            "condition": "integer | min: 1 | max: 100 | default: 50",
+        },
+        {
+            "name": "seed",
+            "value": "The seed used to generate your image.",
+            "condition": "integer | min: 0 | max: 4294967295 | default: random integer",
+        },
+        {
+            "name": "width",
+            "value": "The width of the generated image.",
+            "condition": f"integer | min: {model_settings.image_minimum_size} | max: {model_settings.image_maximum_size} | default: {model_settings.image_minimum_size}",
+        },
+        {
+            "name": "height",
+            "value": "The height of the generated image.",
+            "condition": f"integer | min: {model_settings.image_minimum_size} | max: {model_settings.image_maximum_size} | default: {model_settings.image_minimum_size}",
+        },
+        {
+            "name": "images",
+            "value": "How many images you wish to generate.",
+            "condition": "integer | min: 1 | max: 4 | default: 2",
+        },
+        {
+            "name": "guidance_scale",
+            "value": "How much the image will be like your prompt. Higher values keep your image closer to your prompt.",
+            "condition": "number | min: 0 | max: 20 | default: 7",
+        },
+    ]
+    generate_title = "/generate"
+    generate_description = "\n>".join(
+        [f" - `{each['name']}` \n> {each['value']}\n> {each['condition']}" for each in generate_parameters]
+    )
+
+    content = f"**{generate_title}** \n>{generate_description}"
+    await interaction.response.send_message(content=content)
 
 
 client.run(discord_settings.bot_token)
