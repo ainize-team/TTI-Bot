@@ -8,11 +8,14 @@ from discord.ui import Button, View
 from pydantic import ValidationError
 
 from client import TextToImageClient
+from enums import ErrorMessage, ErrorTitle, ResponseStatusEnum, WarningMessages
+from schemas import ImageGenerationDiscordParams
 from settings import discord_settings, model_settings
 from utils import (
     build_error_message,
     build_message,
     get_logger,
+    get_req,
     get_results,
     individual_image_button,
     post_req,
@@ -30,18 +33,18 @@ client = TextToImageClient(intents=intents, guild=GUILD)
 
 @client.tree.command(guild=GUILD, name="generate", description="Generate Image")
 @app_commands.describe(
-    prompt="try adding increments to your prompt such as 'oil on canvas', 'a painting', 'a book cover'",
-    steps="more steps can increase quality but will take longer to generate",
+    prompt="Try adding increments to your prompt such as 'oil on canvas', 'a painting', 'a book cover'",
+    steps="More steps can increase quality but will take longer to generate",
     seed="Random seed",
     width="Image width",
     height="Image Height",
     images="How many images you wish to generate",
-    guidance_scale="how much the prompt will influence the results",
+    guidance_scale="How much the prompt will influence the results",
 )
 async def generate(
     interaction: discord.Interaction,
     prompt: str,
-    steps: Optional[int] = 45,
+    steps: Optional[int] = 50,
     seed: Optional[int] = None,
     width: Optional[int] = model_settings.image_minimum_size,
     height: Optional[int] = model_settings.image_minimum_size,
@@ -60,10 +63,6 @@ async def generate(
         try:
             image_generation_request, warning_message_list = preprocess_data(
                 prompt=prompt,
-                user_id=user_id,
-                guild_id=guild_id,
-                channel_id=channel_id,
-                message_id=message_id,
                 steps=steps,
                 seed=seed,
                 width=width,
@@ -78,15 +77,14 @@ async def generate(
                 msg = error["msg"]
                 error_message_list.append(f"{loc} : {msg}")
             error_message = "\n".join(error_message_list)
-            error_embed = build_error_message(title="Input Validation Error", description=error_message)
+            error_embed = build_error_message(title=ErrorTitle.INPUT_VALIDATION, description=error_message)
             logger.error(f"{interaction.user.name} ValidationError")
             await interaction.response.send_message(embed=error_embed)
             return
         except Exception as unknown_error:
-            error_message = (
-                f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}"
-            )
-            error_embed = build_error_message(title="Unknown Error", description=error_message)
+            error_message = ErrorMessage.UNKNOWN
+            error_message += f"Error: {unknown_error}"
+            error_embed = build_error_message(title=ErrorTitle.UNKNOWN, description=error_message)
             await interaction.response.send_message(embed=error_embed)
             return
         logger.info(f"{interaction.user.name} generate image - request task")
@@ -102,17 +100,24 @@ async def generate(
             allowed_mentions=mentions,
         )
     except Exception as unknown_error:
-        error_message = (
-            f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}"
-        )
-        error_embed = build_error_message(title="Unknown Error", description=error_message)
+        error_message = ErrorMessage.UNKNOWN
+        error_message += f"Error: {unknown_error}"
+        error_embed = build_error_message(title=ErrorTitle.UNKNOWN, description=error_message)
         await interaction.response.send_message(embed=error_embed)
         return
     try:
         message = await interaction.original_response()
         message_id = str(message.id)
-        image_generation_request.message_id = message_id
-        request_data = image_generation_request.dict()
+        discord_data = ImageGenerationDiscordParams(
+            user_id=user_id,
+            guild_id=guild_id,
+            channel_id=channel_id,
+            message_id=message_id,
+        )
+        request_data = {
+            "discord": discord_data.dict(),
+            "params": image_generation_request.dict(),
+        }
         logger.info(f"Data : {request_data}")
         is_success, res = post_req(url=f"{model_settings.endpoint}/generate", data=request_data)
         if is_success:
@@ -129,7 +134,7 @@ async def generate(
                 allowed_mentions=mentions,
             )
             is_success, res = await get_results(
-                url=f"{model_settings.endpoint}/result/{task_id}",
+                url=f"{model_settings.endpoint}/tasks/{task_id}/images",
                 n=300,
                 user=user_mention,
                 interaction=interaction,
@@ -159,8 +164,7 @@ async def generate(
 
                 message_embed.set_image(url=result["grid"]["url"])
                 if sum([each["is_filtered"] for each in result.values()]):
-                    warning_message_list.append("Potential NSFW content was detected in one or more images.")
-                    warning_message_list.append("If you want to see the original image, press the button below.")
+                    warning_message_list.append(WarningMessages.NSFW)
                 if len(warning_message_list) != 0:
                     warning_message_list.insert(0, f"task_id: {task_id}")
                     message_embed.colour = discord.Colour.orange()
@@ -183,8 +187,8 @@ async def generate(
                 return
             else:
                 error_embed = build_error_message(
-                    title="TimeOut Error",
-                    description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id{task_id}.",
+                    title=ErrorTitle.TIMEOUT,
+                    description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id {task_id}.",
                 )
                 await interaction.edit_original_response(embed=error_embed)
                 return
@@ -193,11 +197,111 @@ async def generate(
             error_embed = build_error_message(title="Request Error", description=error_message)
             await interaction.edit_original_response(embed=error_embed)
     except Exception as unknown_error:
-        error_message = (
-            f"Unknown error occurred.\nPlease share the error with our community manager.\nError: {unknown_error}"
-        )
+        error_message = ErrorMessage.UNKNOWN
+        error_message += f"Error: {unknown_error}"
         error_embed = build_error_message(title="Unknown Error", description=error_message)
         await interaction.edit_original_response(embed=error_embed)
+
+
+@client.tree.command(guild=GUILD, name="result", description="Get task result using task id")
+@app_commands.describe(task_id="a task id string obtained when creating an image")
+async def result(
+    interaction: discord.Interaction,
+    task_id: str,
+):
+    warning_message_list = []
+    mentions = discord.AllowedMentions(users=True)
+
+    try:
+        user_mention = interaction.user.mention
+        is_success, res = get_req(url=f"{model_settings.endpoint}/tasks/{task_id}/params")
+
+        if is_success:
+            if res["status"] != ResponseStatusEnum.COMPLETED:
+                message_embed = build_message(
+                    title="Task is not finished",
+                    description=f"Current status : {res['status']}",
+                    colour=discord.Colour.blue(),
+                )
+                message_embed.colour = discord.Colour.orange()
+                await interaction.response.send_message(
+                    embed=message_embed,
+                    content=f"{user_mention} The result of requested task is below.",
+                    allowed_mentions=mentions,
+                )
+                return
+            request_params = res["params"]
+            is_success, res = get_req(url=f"{model_settings.endpoint}/tasks/{task_id}/images")
+            if is_success:
+                result = res["result"]
+            else:
+                error_embed = build_error_message(
+                    title=ErrorTitle.WRONG_TASK_ID,
+                    description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
+                )
+                await interaction.response.send_message(embed=error_embed)
+                return
+        else:
+            error_embed = build_error_message(
+                title=ErrorTitle.WRONG_TASK_ID,
+                description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
+            )
+            await interaction.response.send_message(embed=error_embed)
+            return
+
+        button_list = [
+            Button(label=f"Image #{i + 1}", style=discord.ButtonStyle.gray) for i in range(request_params["images"])
+        ]
+        view = View(timeout=None)
+        for i in range(request_params["images"]):
+            if result[str(i + 1)]["is_filtered"]:
+                button_list[i].callback = individual_image_button(
+                    result[str(i + 1)]["origin_url"],
+                    title=f"Prompt: {request_params['prompt']}",
+                    description=f"task id: {task_id}",
+                )
+            else:
+                button_list[i].callback = individual_image_button(
+                    result[str(i + 1)]["url"],
+                    title=f"Prompt: {request_params['prompt']}",
+                    description=f"task id: {task_id}",
+                )
+            view.add_item(button_list[i])
+
+        message_embed = build_message(
+            title=f"Prompt: {request_params['prompt']}",
+            description=f"task_id: {task_id}",
+            colour=discord.Colour.blue(),
+        )
+        message_embed.set_image(url=result["grid"]["url"])
+        if sum([each["is_filtered"] for each in result.values()]):
+            warning_message_list.append(WarningMessages.NSFW)
+
+        if len(warning_message_list) != 0:
+            warning_message_list.insert(0, f"task_id: {task_id}")
+            message_embed.colour = discord.Colour.orange()
+            message_embed.description = "\n".join(warning_message_list)
+            await interaction.response.send_message(
+                content=f"{user_mention} The result of requested task is below.",
+                embed=message_embed,
+                allowed_mentions=mentions,
+                view=view,
+            )
+        else:
+            content_message = f"{user_mention} The result of requested task is below."
+            message_embed.colour = discord.Colour.green()
+            await interaction.response.send_message(
+                content=content_message,
+                embed=message_embed,
+                allowed_mentions=mentions,
+                view=view,
+            )
+        return
+    except Exception as unknown_error:
+        error_message = ErrorMessage.UNKNOWN
+        error_message += f"Error: {unknown_error}"
+        error_embed = build_error_message(title="Unknown Error", description=error_message)
+        await interaction.response.send_message(embed=error_embed)
 
 
 # TODO: Find Better way
@@ -212,12 +316,12 @@ async def help(interaction: discord.Interaction):
         {
             "name": "steps",
             "value": "How many steps to spend generating (diffusing) your image.",
-            "condition": "integer | min: 1 | max: 100 | default: 45",
+            "condition": "integer | min: 1 | max: 100 | default: 50",
         },
         {
             "name": "seed",
             "value": "The seed used to generate your image.",
-            "condition": "integer | min: 0 | max: 2147483647 | default: random integer",
+            "condition": "integer | min: 0 | max: 4294967295 | default: random integer",
         },
         {
             "name": "width",
