@@ -3,7 +3,7 @@ from enum import Enum
 
 class StrEnum(str, Enum):
     def __repr__(self):
-        return self.name
+        return self.value
 
     def __str__(self):
         return self.value
@@ -21,6 +21,12 @@ class ErrorTitle(StrEnum):
     INPUT_VALIDATION: str = "Input Validation Error"
     TIMEOUT: str = "TimeOut Error"
     WRONG_TASK_ID: str = "Wrong Task ID Error"
+
+
+class ModelEnum(StrEnum):
+    STABLE_DIFFUSION_V14 = "stable-diffusion-v1.4"
+    STABLE_DIFFUSION_V15 = "stable-diffusion-v1.5"
+    STABLE_DIFFUSION_V20 = "stable-diffusion-v2.0"
 
 
 class ErrorMessage(StrEnum):

@@ -8,7 +8,7 @@ from discord.ui import Button, View
 from pydantic import ValidationError
 
 from client import TextToImageClient
-from enums import ErrorMessage, ErrorTitle, ResponseStatusEnum, WarningMessages
+from enums import ErrorMessage, ErrorTitle, ModelEnum, ResponseStatusEnum, WarningMessages
 from schemas import ImageGenerationDiscordParams
 from settings import discord_settings, model_settings
 from utils import (
@@ -50,6 +50,7 @@ async def generate(
     height: Optional[int] = model_settings.image_minimum_size,
     images: Optional[int] = 2,
     guidance_scale: Optional[float] = 7.0,
+    model: Optional[ModelEnum] = ModelEnum.STABLE_DIFFUSION_V20,
 ):
     logger.info(f"{interaction.user.name} generate image")
     user_id = str(interaction.user.id)
@@ -57,6 +58,20 @@ async def generate(
     channel_id = str(interaction.channel.id)
     message_id = "0"  # interaction.message.id
     logger.info(f"{user_id} {guild_id} {channel_id} {message_id}")
+    model_endpoint: str = ""
+    if model == ModelEnum.STABLE_DIFFUSION_V14:
+        model_endpoint = model_settings.endpoint_v14
+    elif model == ModelEnum.STABLE_DIFFUSION_V15:
+        model_endpoint = model_settings.endpoint_v15
+    elif model == ModelEnum.STABLE_DIFFUSION_V20:
+        model_endpoint = model_settings.endpoint_v20
+    else:
+        error_embed = build_error_message(
+            title=ErrorTitle.INPUT_VALIDATION, description=f"{model} is not supported yet."
+        )
+        logger.error(f"{interaction.user.name} ValidationError: Model is not supported.")
+        await interaction.response.send_message(embed=error_embed)
+        return
     try:
         if seed is None:
             seed = random.randint(0, 4294967295)
@@ -119,7 +134,7 @@ async def generate(
             "params": image_generation_request.dict(),
         }
         logger.info(f"Data : {request_data}")
-        is_success, res = post_req(url=f"{model_settings.endpoint}/generate", data=request_data)
+        is_success, res = post_req(url=f"{model_endpoint}/generate", data=request_data)
         if is_success:
             task_id = res["task_id"]
             user_mention = interaction.user.mention
@@ -134,7 +149,7 @@ async def generate(
                 allowed_mentions=mentions,
             )
             is_success, res = await get_results(
-                url=f"{model_settings.endpoint}/tasks/{task_id}/images",
+                url=f"{model_endpoint}/tasks/{task_id}/images",
                 n=300,
                 user=user_mention,
                 interaction=interaction,
@@ -211,10 +226,11 @@ async def result(
 ):
     warning_message_list = []
     mentions = discord.AllowedMentions(users=True)
-
+    # There is no need to distinguish between model.
+    model_endpoint = model_settings.endpoint_v20
     try:
         user_mention = interaction.user.mention
-        is_success, res = get_req(url=f"{model_settings.endpoint}/tasks/{task_id}/params")
+        is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/params")
 
         if is_success:
             if res["status"] != ResponseStatusEnum.COMPLETED:
@@ -231,7 +247,7 @@ async def result(
                 )
                 return
             request_params = res["params"]
-            is_success, res = get_req(url=f"{model_settings.endpoint}/tasks/{task_id}/images")
+            is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/images")
             if is_success:
                 result = res["result"]
             else:
@@ -342,6 +358,11 @@ async def help(interaction: discord.Interaction):
             "name": "guidance_scale",
             "value": "How much the image will be like your prompt. Higher values keep your image closer to your prompt.",
             "condition": "number | min: 0 | max: 20 | default: 7",
+        },
+        {
+            "name": "model",
+            "value": "name of diffusion model. stable-diffusion-v1.4, stable-diffusion-v1.5 or stable-diffusion-v2.0 is supported.",
+            "condition": "string | default: stable-diffusion-v2.0",
         },
     ]
     generate_title = "/generate"
