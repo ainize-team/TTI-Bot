@@ -119,6 +119,8 @@ async def get_results(
         status = res["status"]
         if status == ResponseStatusEnum.COMPLETED:
             return True, res
+        if status == ResponseStatusEnum.ERROR:
+            return False, res
         elif status != prev_status:
             await interaction.edit_original_response(
                 embed=message,

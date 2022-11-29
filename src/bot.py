@@ -139,7 +139,7 @@ async def generate(
             )
             is_success, res = await get_results(
                 url=f"{model_endpoint}/tasks/{task_id}/images",
-                n=600,
+                n=300,
                 user=user_mention,
                 interaction=interaction,
                 message=message_embed,
@@ -190,11 +190,17 @@ async def generate(
                     )
                 return
             else:
-                error_embed = build_error_message(
-                    title=ErrorTitle.TIMEOUT,
-                    description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id {task_id}.",
-                )
-                await interaction.edit_original_response(embed=error_embed)
+                if res:
+                    error_embed = build_error_message(
+                        title=ErrorTitle.UNKNOWN,
+                        description=ErrorMessage.UNKNOWN,
+                    )
+                else:
+                    error_embed = build_error_message(
+                        title=ErrorTitle.TIMEOUT,
+                        description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id {task_id}.",
+                    )
+                    await interaction.edit_original_response(embed=error_embed)
                 return
         else:
             error_message = "The request failed.\nPlease try again in a momentarily.\nIf the situation repeats, please let our community manager know."
