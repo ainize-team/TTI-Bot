@@ -35,6 +35,7 @@ def preprocess_data(
     height: int,
     images: int,
     guidance_scale: float,
+    model_id: str,
 ) -> Tuple[ImageGenerationParams, List[str]]:
     warning_message_list = []
     if width % model_settings.image_unit_size != 0:
@@ -57,6 +58,7 @@ def preprocess_data(
         height=height,
         images=images,
         guidance_scale=guidance_scale,
+        model_id=model_id,
     )
     return image_generation_request, warning_message_list
 

@@ -33,13 +33,14 @@ client = TextToImageClient(intents=intents, guild=GUILD)
 
 @client.tree.command(guild=GUILD, name="generate", description="Generate Image")
 @app_commands.describe(
-    prompt="Try adding increments to your prompt such as 'oil on canvas', 'a painting', 'a book cover'",
+    prompt="Try adding increments to your prompt such as 'a photo of an astronaut riding a horse on mars'",
     steps="More steps can increase quality but will take longer to generate",
     seed="Random seed",
     width="Image width",
     height="Image Height",
     images="How many images you wish to generate",
     guidance_scale="How much the prompt will influence the results",
+    model_id="text to art model id. stable-diffusion-v1-4, stable-diffusion-v1-5 and stable-diffusion-v2 are now available",
 )
 async def generate(
     interaction: discord.Interaction,
@@ -50,28 +51,15 @@ async def generate(
     height: Optional[int] = model_settings.image_minimum_size,
     images: Optional[int] = 2,
     guidance_scale: Optional[float] = 7.0,
-    model: Optional[str] = ModelEnum.STABLE_DIFFUSION_V20,
+    model_id: Optional[str] = ModelEnum.STABLE_DIFFUSION_V2,
 ):
     logger.info(f"{interaction.user.name} generate image")
+    model_endpoint = model_settings.endpoint
     user_id = str(interaction.user.id)
     guild_id = str(interaction.guild.id)
     channel_id = str(interaction.channel.id)
     message_id = "0"  # interaction.message.id
     logger.info(f"{user_id} {guild_id} {channel_id} {message_id}")
-    model_endpoint: str = ""
-    if model == ModelEnum.STABLE_DIFFUSION_V14:
-        model_endpoint = model_settings.endpoint_v14
-    elif model == ModelEnum.STABLE_DIFFUSION_V15:
-        model_endpoint = model_settings.endpoint_v15
-    elif model == ModelEnum.STABLE_DIFFUSION_V20:
-        model_endpoint = model_settings.endpoint_v20
-    else:
-        error_embed = build_error_message(
-            title=ErrorTitle.INPUT_VALIDATION, description=f"{model} is not supported yet."
-        )
-        logger.error(f"{interaction.user.name} ValidationError: Model is not supported.")
-        await interaction.response.send_message(embed=error_embed)
-        return
     try:
         if seed is None:
             seed = random.randint(0, 4294967295)
@@ -84,6 +72,7 @@ async def generate(
                 height=height,
                 images=images,
                 guidance_scale=guidance_scale,
+                model_id=model_id,
             )
         except ValidationError as validation_error:
             error_message_list = []
@@ -140,7 +129,7 @@ async def generate(
             user_mention = interaction.user.mention
             message_embed = build_message(
                 title=f"Prompt: {image_generation_request.prompt}",
-                description=f"task_id: {task_id}",
+                description=f"task_id: {task_id}\nmodel_id: {model_id}",
                 colour=discord.Colour.blue(),
             )
             await interaction.edit_original_response(
@@ -150,7 +139,7 @@ async def generate(
             )
             is_success, res = await get_results(
                 url=f"{model_endpoint}/tasks/{task_id}/images",
-                n=300,
+                n=600,
                 user=user_mention,
                 interaction=interaction,
                 message=message_embed,
@@ -167,13 +156,13 @@ async def generate(
                         button_list[i].callback = individual_image_button(
                             result[str(i + 1)]["origin_url"],
                             title=f"Prompt: {image_generation_request.prompt}",
-                            description=f"task id: {task_id}",
+                            description=f"task_id: {task_id}\nmodel_id: {model_id}",
                         )
                     else:
                         button_list[i].callback = individual_image_button(
                             result[str(i + 1)]["url"],
                             title=f"Prompt: {image_generation_request.prompt}",
-                            description=f"task id: {task_id}",
+                            description=f"task_id: {task_id}\nmodel_id: {model_id}",
                         )
                     view.add_item(button_list[i])
 
@@ -226,8 +215,7 @@ async def result(
 ):
     warning_message_list = []
     mentions = discord.AllowedMentions(users=True)
-    # There is no need to distinguish between model.
-    model_endpoint = model_settings.endpoint_v20
+    model_endpoint = model_settings.endpoint
     try:
         user_mention = interaction.user.mention
         is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/params")
@@ -360,9 +348,9 @@ async def help(interaction: discord.Interaction):
             "condition": "number | min: 0 | max: 20 | default: 7",
         },
         {
-            "name": "model",
-            "value": "name of diffusion model. stable-diffusion-v1.4, stable-diffusion-v1.5 or stable-diffusion-v2.0 is supported.",
-            "condition": "string | default: stable-diffusion-v2.0",
+            "name": "model_id",
+            "value": "name of diffusion model. stable-diffusion-v1-4, stable-diffusion-v1-5 or stable-diffusion-v2 is supported.",
+            "condition": "string | default: stable-diffusion-v2",
         },
     ]
     generate_title = "/generate"
