@@ -355,8 +355,8 @@ async def help(interaction: discord.Interaction):
         },
         {
             "name": "model_id",
-            "value": "name of diffusion model. stable-diffusion-v1-4, stable-diffusion-v1-5 or stable-diffusion-v2 is supported.",
-            "condition": "string | default: stable-diffusion-v2",
+            "value": "name of diffusion model. `stable-diffusion-v1-4`, `stable-diffusion-v1-5` or `stable-diffusion-v2` is supported.",
+            "condition": "string | default: `stable-diffusion-v2`",
         },
     ]
     generate_title = "/generate"
