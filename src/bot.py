@@ -47,8 +47,8 @@ async def generate(
     prompt: str,
     steps: Optional[int] = 50,
     seed: Optional[int] = None,
-    width: Optional[int] = model_settings.image_minimum_size,
-    height: Optional[int] = model_settings.image_minimum_size,
+    width: Optional[int] = 768,
+    height: Optional[int] = 768,
     images: Optional[int] = 2,
     guidance_scale: Optional[float] = 7.0,
     model_id: Optional[str] = ModelEnum.STABLE_DIFFUSION_V2,
@@ -336,12 +336,12 @@ async def help(interaction: discord.Interaction):
         {
             "name": "width",
             "value": "The width of the generated image.",
-            "condition": f"integer | min: {model_settings.image_minimum_size} | max: {model_settings.image_maximum_size} | default: {model_settings.image_minimum_size}",
+            "condition": f"integer | min: {model_settings.image_minimum_size} | max: {model_settings.image_maximum_size} | default: 768",
         },
         {
             "name": "height",
             "value": "The height of the generated image.",
-            "condition": f"integer | min: {model_settings.image_minimum_size} | max: {model_settings.image_maximum_size} | default: {model_settings.image_minimum_size}",
+            "condition": f"integer | min: {model_settings.image_minimum_size} | max: {model_settings.image_maximum_size} | default: 768",
         },
         {
             "name": "images",
