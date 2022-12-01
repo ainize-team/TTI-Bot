@@ -35,6 +35,7 @@ def preprocess_data(
     height: int,
     images: int,
     guidance_scale: float,
+    model_id: str,
 ) -> Tuple[ImageGenerationParams, List[str]]:
     warning_message_list = []
     if width % model_settings.image_unit_size != 0:
@@ -57,6 +58,7 @@ def preprocess_data(
         height=height,
         images=images,
         guidance_scale=guidance_scale,
+        model_id=model_id,
     )
     return image_generation_request, warning_message_list
 
@@ -117,6 +119,8 @@ async def get_results(
         status = res["status"]
         if status == ResponseStatusEnum.COMPLETED:
             return True, res
+        if status == ResponseStatusEnum.ERROR:
+            return False, res
         elif status != prev_status:
             await interaction.edit_original_response(
                 embed=message,

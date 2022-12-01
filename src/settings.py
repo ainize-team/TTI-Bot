@@ -7,8 +7,9 @@ class DiscordSettings(BaseSettings):
 
 
 class ModelSettings(BaseSettings):
-    endpoint: HttpUrl = Field(..., description="Diffusion Model Endpoint")
+    endpoint: HttpUrl = Field(..., description="Text to Art Model Endpoint")
     upscale_endpoint: HttpUrl = Field(..., description="Super Resolution Model Endpoint")
+    # TODO: get image min/max size from database
     image_minimum_size: int = 512
     image_maximum_size: int = 1024
     image_unit_size: int = 64

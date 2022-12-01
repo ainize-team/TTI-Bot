@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+from enums import ModelEnum
 from settings import model_settings
 
 
@@ -37,6 +38,10 @@ class ImageGenerationParams(BaseModel):
         ge=0,
         le=20,
         description="How much the image will be like your prompt. Higher values keep your image closer to your prompt.",
+    )
+    model_id: ModelEnum = Field(
+        ModelEnum.STABLE_DIFFUSION_V2,
+        description="name of diffusion model. stable-diffusion-v1-4, stable-diffusion-v1-5 or stable-diffusion-v2 are supported.",
     )
 
 

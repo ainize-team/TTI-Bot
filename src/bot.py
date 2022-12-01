@@ -8,7 +8,7 @@ from discord.ui import Button, View
 from pydantic import ValidationError
 
 from client import TextToImageClient
-from enums import ErrorMessage, ErrorTitle, ResponseStatusEnum, WarningMessages
+from enums import ErrorMessage, ErrorTitle, ModelEnum, ResponseStatusEnum, WarningMessages
 from schemas import ImageGenerationDiscordParams
 from settings import discord_settings, model_settings
 from utils import (
@@ -33,25 +33,28 @@ client = TextToImageClient(intents=intents, guild=GUILD)
 
 @client.tree.command(guild=GUILD, name="generate", description="Generate Image")
 @app_commands.describe(
-    prompt="Try adding increments to your prompt such as 'oil on canvas', 'a painting', 'a book cover'",
+    prompt="Try adding increments to your prompt such as 'a photo of an astronaut riding a horse on mars'",
     steps="More steps can increase quality but will take longer to generate",
     seed="Random seed",
     width="Image width",
     height="Image Height",
     images="How many images you wish to generate",
     guidance_scale="How much the prompt will influence the results",
+    model_id="text to art model id. stable-diffusion-v1-4, stable-diffusion-v1-5 and stable-diffusion-v2 are now available",
 )
 async def generate(
     interaction: discord.Interaction,
     prompt: str,
     steps: Optional[int] = 50,
     seed: Optional[int] = None,
-    width: Optional[int] = model_settings.image_minimum_size,
-    height: Optional[int] = model_settings.image_minimum_size,
+    width: Optional[int] = 768,
+    height: Optional[int] = 768,
     images: Optional[int] = 2,
     guidance_scale: Optional[float] = 7.0,
+    model_id: Optional[str] = ModelEnum.STABLE_DIFFUSION_V2,
 ):
     logger.info(f"{interaction.user.name} generate image")
+    model_endpoint = model_settings.endpoint
     user_id = str(interaction.user.id)
     guild_id = str(interaction.guild.id)
     channel_id = str(interaction.channel.id)
@@ -69,6 +72,7 @@ async def generate(
                 height=height,
                 images=images,
                 guidance_scale=guidance_scale,
+                model_id=model_id,
             )
         except ValidationError as validation_error:
             error_message_list = []
@@ -119,13 +123,13 @@ async def generate(
             "params": image_generation_request.dict(),
         }
         logger.info(f"Data : {request_data}")
-        is_success, res = post_req(url=f"{model_settings.endpoint}/generate", data=request_data)
+        is_success, res = post_req(url=f"{model_endpoint}/generate", data=request_data)
         if is_success:
             task_id = res["task_id"]
             user_mention = interaction.user.mention
             message_embed = build_message(
                 title=f"Prompt: {image_generation_request.prompt}",
-                description=f"task_id: {task_id}",
+                description=f"task_id: {task_id}\nmodel_id: {model_id}",
                 colour=discord.Colour.blue(),
             )
             await interaction.edit_original_response(
@@ -134,7 +138,7 @@ async def generate(
                 allowed_mentions=mentions,
             )
             is_success, res = await get_results(
-                url=f"{model_settings.endpoint}/tasks/{task_id}/images",
+                url=f"{model_endpoint}/tasks/{task_id}/images",
                 n=300,
                 user=user_mention,
                 interaction=interaction,
@@ -152,13 +156,13 @@ async def generate(
                         button_list[i].callback = individual_image_button(
                             result[str(i + 1)]["origin_url"],
                             title=f"Prompt: {image_generation_request.prompt}",
-                            description=f"task id: {task_id}",
+                            description=f"task_id: {task_id}\nmodel_id: {model_id}",
                         )
                     else:
                         button_list[i].callback = individual_image_button(
                             result[str(i + 1)]["url"],
                             title=f"Prompt: {image_generation_request.prompt}",
-                            description=f"task id: {task_id}",
+                            description=f"task_id: {task_id}\nmodel_id: {model_id}",
                         )
                     view.add_item(button_list[i])
 
@@ -166,6 +170,7 @@ async def generate(
                 if sum([each["is_filtered"] for each in result.values()]):
                     warning_message_list.append(WarningMessages.NSFW)
                 if len(warning_message_list) != 0:
+                    warning_message_list.insert(0, f"model_id: {model_id}")
                     warning_message_list.insert(0, f"task_id: {task_id}")
                     message_embed.colour = discord.Colour.orange()
                     message_embed.description = "\n".join(warning_message_list)
@@ -186,11 +191,17 @@ async def generate(
                     )
                 return
             else:
-                error_embed = build_error_message(
-                    title=ErrorTitle.TIMEOUT,
-                    description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id {task_id}.",
-                )
-                await interaction.edit_original_response(embed=error_embed)
+                if res:
+                    error_embed = build_error_message(
+                        title=ErrorTitle.UNKNOWN,
+                        description=ErrorMessage.UNKNOWN,
+                    )
+                else:
+                    error_embed = build_error_message(
+                        title=ErrorTitle.TIMEOUT,
+                        description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id {task_id}.",
+                    )
+                    await interaction.edit_original_response(embed=error_embed)
                 return
         else:
             error_message = "The request failed.\nPlease try again in a momentarily.\nIf the situation repeats, please let our community manager know."
@@ -211,10 +222,10 @@ async def result(
 ):
     warning_message_list = []
     mentions = discord.AllowedMentions(users=True)
-
+    model_endpoint = model_settings.endpoint
     try:
         user_mention = interaction.user.mention
-        is_success, res = get_req(url=f"{model_settings.endpoint}/tasks/{task_id}/params")
+        is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/params")
 
         if is_success:
             if res["status"] != ResponseStatusEnum.COMPLETED:
@@ -231,7 +242,7 @@ async def result(
                 )
                 return
             request_params = res["params"]
-            is_success, res = get_req(url=f"{model_settings.endpoint}/tasks/{task_id}/images")
+            is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/images")
             if is_success:
                 result = res["result"]
             else:
@@ -326,12 +337,12 @@ async def help(interaction: discord.Interaction):
         {
             "name": "width",
             "value": "The width of the generated image.",
-            "condition": f"integer | min: {model_settings.image_minimum_size} | max: {model_settings.image_maximum_size} | default: {model_settings.image_minimum_size}",
+            "condition": f"integer | min: {model_settings.image_minimum_size} | max: {model_settings.image_maximum_size} | default: 768",
         },
         {
             "name": "height",
             "value": "The height of the generated image.",
-            "condition": f"integer | min: {model_settings.image_minimum_size} | max: {model_settings.image_maximum_size} | default: {model_settings.image_minimum_size}",
+            "condition": f"integer | min: {model_settings.image_minimum_size} | max: {model_settings.image_maximum_size} | default: 768",
         },
         {
             "name": "images",
@@ -342,6 +353,11 @@ async def help(interaction: discord.Interaction):
             "name": "guidance_scale",
             "value": "How much the image will be like your prompt. Higher values keep your image closer to your prompt.",
             "condition": "number | min: 0 | max: 20 | default: 7",
+        },
+        {
+            "name": "model_id",
+            "value": "name of diffusion model. `stable-diffusion-v1-4`, `stable-diffusion-v1-5` or `stable-diffusion-v2` is supported.",
+            "condition": "string | default: `stable-diffusion-v2`",
         },
     ]
     generate_title = "/generate"
