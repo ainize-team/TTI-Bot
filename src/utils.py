@@ -8,6 +8,7 @@ from typing import Callable, Dict, List, Tuple
 import discord
 import requests
 from discord.ui import Button, View
+from typing import Optional
 
 from enums import ErrorMessage, ErrorTitle, ResponseStatusEnum, WarningMessages
 from schemas import ImageGenerationDiscordParams, ImageGenerationParams
@@ -37,6 +38,7 @@ def preprocess_data(
     images: int,
     guidance_scale: float,
     model_id: str,
+    negative_prompt: Optional[str],
 ) -> Tuple[ImageGenerationParams, List[str]]:
     warning_message_list = []
     if width % model_settings.image_unit_size != 0:
@@ -60,6 +62,7 @@ def preprocess_data(
         images=images,
         guidance_scale=guidance_scale,
         model_id=model_id,
+        negative_prompt=negative_prompt,
     )
     return image_generation_request, warning_message_list
 
