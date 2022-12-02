@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import logging.handlers
+import random
 from typing import Callable, Dict, List, Tuple
 
 import discord
@@ -9,8 +10,8 @@ import requests
 from discord.ui import Button, View
 from typing import Optional
 
-from enums import ResponseStatusEnum
-from schemas import ImageGenerationParams
+from enums import ErrorMessage, ErrorTitle, ResponseStatusEnum, WarningMessages
+from schemas import ImageGenerationDiscordParams, ImageGenerationParams
 from settings import model_settings
 
 
@@ -208,5 +209,134 @@ def individual_image_button(image_url: str, title: str, description: str) -> Cal
         view.add_item(upscale_button)
 
         await interaction.response.send_message(embed=embed, ephemeral=True, view=view)
+
+    return call_back
+
+
+def re_generate_button(image_generation_request: ImageGenerationParams) -> Callable:
+    # TODO: remove duplicate code
+    async def call_back(interaction: discord.Interaction):
+        seed = random.randint(0, 4294967295)
+        # Is it possible?
+        while image_generation_request.seed == seed:
+            seed = random.randint(0, 4294967295)
+        image_generation_request.seed = seed
+        model_endpoint = model_settings.endpoint
+
+        message_embed = build_message(
+            title=f"Prompt: {image_generation_request.prompt}",
+            description="",
+            colour=discord.Colour.blue(),
+        )
+
+        mentions = discord.AllowedMentions(users=True)
+        await interaction.response.send_message(
+            embed=message_embed,
+            allowed_mentions=mentions,
+        )
+
+        message = await interaction.original_response()
+        message_id = str(message.id)
+        user_id = str(interaction.user.id)
+        guild_id = str(interaction.guild.id)
+        channel_id = str(interaction.channel.id)
+
+        discord_data = ImageGenerationDiscordParams(
+            user_id=user_id,
+            guild_id=guild_id,
+            channel_id=channel_id,
+            message_id=message_id,
+        )
+        request_data = {
+            "discord": discord_data.dict(),
+            "params": image_generation_request.dict(),
+        }
+        logger.info(f"Data : {request_data}")
+
+        is_success, res = post_req(url=f"{model_endpoint}/generate", data=request_data)
+
+        if is_success:
+            task_id = res["task_id"]
+            user_mention = interaction.user.mention
+            model_id = image_generation_request.model_id
+            message_embed = build_message(
+                title=f"Prompt: {image_generation_request.prompt}",
+                description=f"task_id: {task_id}\nmodel_id: {model_id}",
+                colour=discord.Colour.blue(),
+            )
+            await interaction.edit_original_response(
+                embed=message_embed,
+                content=f"{user_mention} Your task is successfully requested.",
+                allowed_mentions=mentions,
+            )
+            is_success, res = await get_results(
+                url=f"{model_endpoint}/tasks/{task_id}/images",
+                n=300,
+                user=user_mention,
+                interaction=interaction,
+                message=message_embed,
+            )
+            if is_success:
+                button_list = [
+                    Button(label=f"Image #{i + 1}", style=discord.ButtonStyle.gray)
+                    for i in range(image_generation_request.images)
+                ]
+                view = View(timeout=None)
+                result = res["result"]
+                for i in range(image_generation_request.images):
+                    if result[str(i + 1)]["is_filtered"]:
+                        button_list[i].callback = individual_image_button(
+                            result[str(i + 1)]["origin_url"],
+                            title=f"Prompt: {image_generation_request.prompt}",
+                            description=f"task_id: {task_id}\nmodel_id: {model_id}",
+                        )
+                    else:
+                        button_list[i].callback = individual_image_button(
+                            result[str(i + 1)]["url"],
+                            title=f"Prompt: {image_generation_request.prompt}",
+                            description=f"task_id: {task_id}\nmodel_id: {model_id}",
+                        )
+                    view.add_item(button_list[i])
+                re_gen_button = Button(label="🔄", style=discord.ButtonStyle.gray)
+                re_gen_button.callback = re_generate_button(image_generation_request)
+                view.add_item(re_gen_button)
+                message_embed.set_image(url=result["grid"]["url"])
+                warning_message_list = []
+                if sum([each["is_filtered"] for each in result.values()]):
+                    warning_message_list.append(WarningMessages.NSFW)
+                if len(warning_message_list) != 0:
+                    warning_message_list.insert(0, f"model_id: {model_id}")
+                    warning_message_list.insert(0, f"task_id: {task_id}")
+                    message_embed.colour = discord.Colour.orange()
+                    message_embed.description = "\n".join(warning_message_list)
+                    await interaction.edit_original_response(
+                        content=f"{user_mention} Your task is completed.",
+                        embed=message_embed,
+                        allowed_mentions=mentions,
+                        view=view,
+                    )
+                else:
+                    content_message = f"{user_mention} Your task is completed."
+                    message_embed.colour = discord.Colour.green()
+                    await interaction.edit_original_response(
+                        content=content_message,
+                        embed=message_embed,
+                        allowed_mentions=mentions,
+                        view=view,
+                    )
+                return
+            else:
+                if res:
+                    error_embed = build_error_message(
+                        title=ErrorTitle.UNKNOWN,
+                        description=ErrorMessage.UNKNOWN,
+                    )
+                else:
+                    error_embed = build_error_message(
+                        title=ErrorTitle.TIMEOUT,
+                        description=f"Your task cannot be generated because there are too many tasks on the server.\nIf you want to get your results late, let the community manager know your task id {task_id}.",
+                    )
+                    await interaction.edit_original_response(embed=error_embed)
+                return
 
     return call_back
