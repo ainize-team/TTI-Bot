@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 from enums import ModelEnum
@@ -42,6 +44,11 @@ class ImageGenerationParams(BaseModel):
     model_id: ModelEnum = Field(
         ModelEnum.STABLE_DIFFUSION_V2,
         description="name of diffusion model. stable-diffusion-v1-4, stable-diffusion-v1-5 or stable-diffusion-v2 are supported.",
+    )
+
+    negative_prompt: Optional[str] = Field(
+        "",
+        description="negative prompting indicates which terms you do not want to see in the resulting image.",
     )
 
 
