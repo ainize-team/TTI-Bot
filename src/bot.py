@@ -41,6 +41,7 @@ client = TextToImageClient(intents=intents, guild=GUILD)
     images="How many images you wish to generate",
     guidance_scale="How much the prompt will influence the results",
     model_id="text to art model id. stable-diffusion-v1-4, stable-diffusion-v1-5 and stable-diffusion-v2 are now available",
+    negative_prompt="prompt value that you do not want to see in the resulting image",
 )
 async def generate(
     interaction: discord.Interaction,
@@ -52,6 +53,7 @@ async def generate(
     images: Optional[int] = 2,
     guidance_scale: Optional[float] = 7.0,
     model_id: Optional[str] = ModelEnum.STABLE_DIFFUSION_V2,
+    negative_prompt: Optional[str] = None,
 ):
     logger.info(f"{interaction.user.name} generate image")
     model_endpoint = model_settings.endpoint
@@ -358,6 +360,11 @@ async def help(interaction: discord.Interaction):
             "name": "model_id",
             "value": "name of diffusion model. `stable-diffusion-v1-4`, `stable-diffusion-v1-5` or `stable-diffusion-v2` is supported.",
             "condition": "string | default: `stable-diffusion-v2`",
+        },
+        {
+            "name": "negative_prompt",
+            "value": "negative prompting indicates which terms you do not want to see in the resulting image.",
+            "condition": "string | default: `None`",
         },
     ]
     generate_title = "/generate"
