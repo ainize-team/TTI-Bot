@@ -20,6 +20,7 @@ from utils import (
     individual_image_button,
     post_req,
     preprocess_data,
+    re_generate_button,
 )
 
 
@@ -165,7 +166,9 @@ async def generate(
                             description=f"task_id: {task_id}\nmodel_id: {model_id}",
                         )
                     view.add_item(button_list[i])
-
+                re_gen_button = Button(label="🔄", style=discord.ButtonStyle.gray)
+                re_gen_button.callback = re_generate_button(image_generation_request)
+                view.add_item(re_gen_button)
                 message_embed.set_image(url=result["grid"]["url"])
                 if sum([each["is_filtered"] for each in result.values()]):
                     warning_message_list.append(WarningMessages.NSFW)
