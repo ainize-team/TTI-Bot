@@ -53,7 +53,7 @@ async def generate(
     images: Optional[int] = 2,
     guidance_scale: Optional[float] = 7.0,
     model_id: Optional[str] = ModelEnum.STABLE_DIFFUSION_V2,
-    negative_prompt: Optional[str] = None,
+    negative_prompt: Optional[str] = "",
 ):
     logger.info(f"{interaction.user.name} generate image")
     model_endpoint = model_settings.endpoint
@@ -75,6 +75,7 @@ async def generate(
                 images=images,
                 guidance_scale=guidance_scale,
                 model_id=model_id,
+                negative_prompt=negative_prompt,
             )
         except ValidationError as validation_error:
             error_message_list = []
@@ -364,7 +365,7 @@ async def help(interaction: discord.Interaction):
         {
             "name": "negative_prompt",
             "value": "negative prompting indicates which terms you do not want to see in the resulting image.",
-            "condition": "string | default: `None`",
+            "condition": "string | default: ``",
         },
     ]
     generate_title = "/generate"
