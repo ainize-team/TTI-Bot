@@ -41,7 +41,7 @@ client = TextToImageClient(intents=intents, guild=GUILD)
     height="Image Height",
     images="How many images you wish to generate",
     guidance_scale="How much the prompt will influence the results",
-    model_id="text to art model id. stable-diffusion-v1-4, stable-diffusion-v1-5 and stable-diffusion-v2 are now available",
+    model_id="name of diffusion model. `stable-diffusion-v1-4`, `stable-diffusion-v1-5`, `stable-diffusion-v2` and `stable-diffusion-v2-1` are now available.",
     negative_prompt="prompt value that you do not want to see in the resulting image",
 )
 async def generate(
@@ -53,7 +53,7 @@ async def generate(
     height: Optional[int] = 768,
     images: Optional[int] = 2,
     guidance_scale: Optional[float] = 7.0,
-    model_id: Optional[str] = ModelEnum.STABLE_DIFFUSION_V2,
+    model_id: Optional[str] = ModelEnum.STABLE_DIFFUSION_V2_1,
     negative_prompt: Optional[str] = "",
 ):
     logger.info(f"{interaction.user.name} generate image")
@@ -362,8 +362,8 @@ async def help(interaction: discord.Interaction):
         },
         {
             "name": "model_id",
-            "value": "name of diffusion model. `stable-diffusion-v1-4`, `stable-diffusion-v1-5` or `stable-diffusion-v2` is supported.",
-            "condition": "string | default: `stable-diffusion-v2`",
+            "value": "name of diffusion model. `stable-diffusion-v1-4`, `stable-diffusion-v1-5`, `stable-diffusion-v2` and `stable-diffusion-v2-1` are supported.",
+            "condition": "string | default: `stable-diffusion-v2-1`",
         },
         {
             "name": "negative_prompt",
