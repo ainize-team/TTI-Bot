@@ -17,6 +17,7 @@ from utils import (
     get_logger,
     get_req,
     get_results,
+    get_twitter_url,
     individual_image_button,
     post_req,
     preprocess_data,
@@ -172,6 +173,12 @@ async def generate(
                 re_gen_button = Button(label="🔄", style=discord.ButtonStyle.gray)
                 re_gen_button.callback = re_generate_button(image_generation_request)
                 view.add_item(re_gen_button)
+                twitter_url = get_twitter_url(image_generation_request.prompt, task_id=task_id)
+                share_twitter_button = Button(
+                    label="Shared on Twitter", style=discord.ButtonStyle.gray, url=twitter_url
+                )
+
+                view.add_item(share_twitter_button)
                 message_embed.set_image(url=result["grid"]["url"])
                 if sum([each["is_filtered"] for each in result.values()]):
                     warning_message_list.append(WarningMessages.NSFW)
