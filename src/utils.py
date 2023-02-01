@@ -3,12 +3,12 @@ import json
 import logging
 import logging.handlers
 import random
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
+from urllib import parse
 
 import discord
 import requests
 from discord.ui import Button, View
-from typing import Optional
 
 from enums import ErrorMessage, ErrorTitle, ResponseStatusEnum, WarningMessages
 from schemas import ImageGenerationDiscordParams, ImageGenerationParams
@@ -340,3 +340,15 @@ def re_generate_button(image_generation_request: ImageGenerationParams) -> Calla
                 return
 
     return call_back
+
+
+def get_twitter_url(prompt: str, task_id: str) -> Callable:
+    def encode_uri_component(text: str) -> str:
+        return parse.quote(text)
+
+    twitter_base_url = "https://twitter.com/intent/tweet"
+    image_url = f"https://main-image-html-renderer-ainize-team.endpoint.ainize.ai/text-to-art/{task_id}"
+    main_text = "It AIN’t difficult to draw a picture if you use Text-to-art scheme through AIN DAO discord - create your own image & earn $AIN!\n@ainetwork_ai #AINetwork #AIN_DAO #AIN #stablediffusion #text2art"
+    twitter_get_twitter_url = f"{twitter_base_url}?text={encode_uri_component(main_text)}&url={image_url}"
+    print(twitter_get_twitter_url)
+    return twitter_get_twitter_url
