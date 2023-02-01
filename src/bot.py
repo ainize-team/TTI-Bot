@@ -175,7 +175,7 @@ async def generate(
                 view.add_item(re_gen_button)
                 twitter_url = get_twitter_url(image_generation_request.prompt, task_id=task_id)
                 share_twitter_button = Button(
-                    label="Share in Twitter", style=discord.ButtonStyle.gray, url=twitter_url
+                    label="Shared on Twitter", style=discord.ButtonStyle.gray, url=twitter_url
                 )
 
                 view.add_item(share_twitter_button)
