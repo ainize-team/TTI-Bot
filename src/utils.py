@@ -348,7 +348,7 @@ def get_twitter_url(prompt: str, task_id: str) -> Callable:
 
     twitter_base_url = "https://twitter.com/intent/tweet"
     image_url = f"https://main-image-html-renderer-ainize-team.endpoint.ainize.ai/text-to-art/{task_id}"
-    main_text = "It AIN’t difficult to draw a picture if you use Text-to-art scheme through AIN DAO discord - create your own image & earn $AIN!\n@ainetwork_ai #AINetwork #AIN_DAO #AIN #stablediffusion #text2art"
+    main_text = "It AIN’t difficult to draw a picture if you use Text-to-art scheme through AIN DAO discord - create your own image & earn $AIN!\n@ainetwork_ai #AINetwork #AIN_DAO #AIN #stablediffusion #text2art https://discord.gg/aindao"
     twitter_get_twitter_url = f"{twitter_base_url}?text={encode_uri_component(main_text)}&url={image_url}"
     print(twitter_get_twitter_url)
     return twitter_get_twitter_url
