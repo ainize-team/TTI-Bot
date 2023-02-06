@@ -12,7 +12,7 @@ from discord.ui import Button, View
 
 from enums import EnvEnum, ErrorMessage, ErrorTitle, ModelEnum, ResponseStatusEnum, SchedulerType, WarningMessages
 from schemas import ImageGenerationDiscordParams, ImageGenerationParams
-from settings import discord_bot_settings, model_settings
+from settings import model_settings
 
 
 def get_logger(name):
