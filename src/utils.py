@@ -3,14 +3,13 @@ import json
 import logging
 import logging.handlers
 import random
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import discord
 import requests
 from discord.ui import Button, View
-from typing import Optional
 
-from enums import ErrorMessage, ErrorTitle, ResponseStatusEnum, WarningMessages
+from enums import ErrorMessage, ErrorTitle, ModelEnum, ResponseStatusEnum, SchedulerType, WarningMessages
 from schemas import ImageGenerationDiscordParams, ImageGenerationParams
 from settings import model_settings
 
@@ -37,8 +36,9 @@ def preprocess_data(
     height: int,
     images: int,
     guidance_scale: float,
-    model_id: str,
+    model_id: ModelEnum,
     negative_prompt: Optional[str],
+    scheduler_type: SchedulerType,
 ) -> Tuple[ImageGenerationParams, List[str]]:
     warning_message_list = []
     if width % model_settings.image_unit_size != 0:
@@ -63,6 +63,7 @@ def preprocess_data(
         guidance_scale=guidance_scale,
         model_id=model_id,
         negative_prompt=negative_prompt,
+        scheduler_type=scheduler_type,
     )
     return image_generation_request, warning_message_list
 

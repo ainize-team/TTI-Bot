@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from enums import ModelEnum
+from enums import ModelEnum, SchedulerType
 from settings import model_settings
 
 
@@ -50,6 +50,8 @@ class ImageGenerationParams(BaseModel):
         "",
         description="negative prompting indicates which terms you do not want to see in the resulting image.",
     )
+
+    scheduler_type: SchedulerType = Field(SchedulerType.DDIM, description="diffusers scheduler type")
 
 
 class ImageGenerationRequest(BaseModel):

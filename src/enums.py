@@ -36,3 +36,14 @@ class ErrorMessage(StrEnum):
 
 class WarningMessages(StrEnum):
     NSFW: str = "Potential NSFW content was detected in one or more images.\nIf you want to see the original image, press the button below."
+
+
+class SchedulerType(StrEnum):
+    DDIM: str = "ddim"  # DDIMScheduler
+    PNDM: str = "pndm"  # PNDMScheduler
+    EULER_DISCRETE = "euler_discrete"  # EulerDiscreteScheduler
+    EULER_ANCESTRAL_DISCRETE = "euler_ancestral_discrete"  # EulerAncestralDiscreteScheduler
+    HEUN_DISCRETE = "heun_discrete"  # HeunDiscreteScheduler
+    K_DPM_2_DISCRETE = "k_dpm_2_discrete"  # KDPM2DiscreteScheduler
+    K_DPM_2_ANCESTRAL_DISCRETE = "k_dpm_2_ancestral_discrete"  # KDPM2AncestralDiscreteScheduler
+    LMS_DISCRETE = "lms_discrete"  # LMSDiscreteScheduler
