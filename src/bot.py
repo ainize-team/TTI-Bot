@@ -17,6 +17,7 @@ from utils import (
     get_logger,
     get_req,
     get_results,
+    get_twitter_url,
     individual_image_button,
     post_req,
     preprocess_data,
@@ -47,8 +48,10 @@ client = TextToImageClient(intents=intents, guild=GUILD)
 )
 @app_commands.choices(
     model_id=[
-        app_commands.Choice(name="Stable Diffusion v2.1-768", value=ModelEnum.STABLE_DIFFUSION_V2_1),
-        app_commands.Choice(name="Stable Diffusion v2.0-768", value=ModelEnum.STABLE_DIFFUSION_V2),
+        app_commands.Choice(name="Stable Diffusion v2.1-768", value=ModelEnum.STABLE_DIFFUSION_V2_1_768),
+        app_commands.Choice(name="Stable Diffusion v2.0-768", value=ModelEnum.STABLE_DIFFUSION_V2_768),
+        app_commands.Choice(name="Stable Diffusion v2.1", value=ModelEnum.STABLE_DIFFUSION_V2_1),
+        app_commands.Choice(name="Stable Diffusion v2.0", value=ModelEnum.STABLE_DIFFUSION_V2),
         app_commands.Choice(name="Stable Diffusion v1.5", value=ModelEnum.STABLE_DIFFUSION_V1_5),
         app_commands.Choice(name="Stable Diffusion v1.4", value=ModelEnum.STABLE_DIFFUSION_V1_4),
     ]
@@ -74,7 +77,7 @@ async def generate(
     height: Optional[int] = 768,
     images: Optional[int] = 2,
     guidance_scale: Optional[float] = 7.0,
-    model_id: Optional[app_commands.Choice[str]] = ModelEnum.STABLE_DIFFUSION_V2_1,
+    model_id: Optional[app_commands.Choice[str]] = ModelEnum.STABLE_DIFFUSION_V2_1_768,
     negative_prompt: Optional[str] = "",
     scheduler_type: Optional[app_commands.Choice[str]] = SchedulerType.DDIM,
 ):
@@ -197,6 +200,12 @@ async def generate(
                 re_gen_button = Button(label="🔄", style=discord.ButtonStyle.gray)
                 re_gen_button.callback = re_generate_button(image_generation_request)
                 view.add_item(re_gen_button)
+                twitter_url = get_twitter_url(image_generation_request.prompt, task_id=task_id)
+                share_twitter_button = Button(
+                    label="Shared on Twitter", style=discord.ButtonStyle.gray, url=twitter_url
+                )
+
+                view.add_item(share_twitter_button)
                 message_embed.set_image(url=result["grid"]["url"])
                 if sum([each["is_filtered"] for each in result.values()]):
                     warning_message_list.append(WarningMessages.NSFW)

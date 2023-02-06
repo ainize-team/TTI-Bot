@@ -1,9 +1,12 @@
 from pydantic import BaseSettings, Field, HttpUrl
 
+from enums import EnvEnum
 
-class DiscordSettings(BaseSettings):
+
+class DiscordBotSettings(BaseSettings):
     bot_token: str = Field(..., description="Discord Bot Token")
     guild_id: str = Field(..., description="Discord Guild ID")
+    bot_env: EnvEnum = EnvEnum.DEV
 
 
 class ModelSettings(BaseSettings):
@@ -15,5 +18,9 @@ class ModelSettings(BaseSettings):
     image_unit_size: int = 64
 
 
-discord_settings = DiscordSettings()
+class TwitterSettings(BaseSettings):
+    image_url: HttpUrl = Field()
+
+
+discord_bot_settings = DiscordBotSettings()
 model_settings = ModelSettings()
