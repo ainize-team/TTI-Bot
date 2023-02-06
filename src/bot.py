@@ -44,6 +44,14 @@ client = TextToImageClient(intents=intents, guild=GUILD)
     model_id="name of diffusion model. `stable-diffusion-v1-4`, `stable-diffusion-v1-5`, `stable-diffusion-v2` and `stable-diffusion-v2-1` are now available.",
     negative_prompt="prompt value that you do not want to see in the resulting image",
 )
+@app_commands.choices(
+    model_id=[
+        app_commands.Choice(name=ModelEnum.STABLE_DIFFUSION_V2_1.name, value=ModelEnum.STABLE_DIFFUSION_V2_1),
+        app_commands.Choice(name=ModelEnum.STABLE_DIFFUSION_V2.name, value=ModelEnum.STABLE_DIFFUSION_V2),
+        app_commands.Choice(name=ModelEnum.STABLE_DIFFUSION_V1_5.name, value=ModelEnum.STABLE_DIFFUSION_V1_5),
+        app_commands.Choice(name=ModelEnum.STABLE_DIFFUSION_V1_4.name, value=ModelEnum.STABLE_DIFFUSION_V1_4),
+    ]
+)
 async def generate(
     interaction: discord.Interaction,
     prompt: str,
@@ -53,7 +61,7 @@ async def generate(
     height: Optional[int] = 768,
     images: Optional[int] = 2,
     guidance_scale: Optional[float] = 7.0,
-    model_id: Optional[str] = ModelEnum.STABLE_DIFFUSION_V2_1,
+    model_id: Optional[app_commands.Choice[str]] = ModelEnum.STABLE_DIFFUSION_V2_1,
     negative_prompt: Optional[str] = "",
 ):
     logger.info(f"{interaction.user.name} generate image")
