@@ -393,7 +393,12 @@ async def help(interaction: discord.Interaction):
         {
             "name": "negative_prompt",
             "value": "negative prompting indicates which terms you do not want to see in the resulting image.",
-            "condition": "string | default: ``",
+            "condition": "string | default: ` `",
+        },
+        {
+            "name": "scheduler_type",
+            "value": "diffusers scheduler type",
+            "condition": "string | default: `ddim`",
         },
     ]
     generate_title = "/generate"
