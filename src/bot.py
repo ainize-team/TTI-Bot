@@ -8,7 +8,7 @@ from discord.ui import Button, View
 from pydantic import ValidationError
 
 from client import TextToImageClient
-from enums import ErrorMessage, ErrorTitle, ModelEnum, ResponseStatusEnum, WarningMessages
+from enums import ErrorMessage, ErrorTitle, ModelEnum, ResponseStatusEnum, SchedulerType, WarningMessages
 from schemas import ImageGenerationDiscordParams
 from settings import discord_settings, model_settings
 from utils import (
@@ -43,6 +43,7 @@ client = TextToImageClient(intents=intents, guild=GUILD)
     guidance_scale="How much the prompt will influence the results",
     model_id="name of diffusion model. `stable-diffusion-v1-4`, `stable-diffusion-v1-5`, `stable-diffusion-v2` and `stable-diffusion-v2-1` are now available.",
     negative_prompt="prompt value that you do not want to see in the resulting image",
+    scheduler_type="diffusers scheduler type",
 )
 @app_commands.choices(
     model_id=[
@@ -50,6 +51,18 @@ client = TextToImageClient(intents=intents, guild=GUILD)
         app_commands.Choice(name="Stable Diffusion v2.0-768", value=ModelEnum.STABLE_DIFFUSION_V2),
         app_commands.Choice(name="Stable Diffusion v1.5", value=ModelEnum.STABLE_DIFFUSION_V1_5),
         app_commands.Choice(name="Stable Diffusion v1.4", value=ModelEnum.STABLE_DIFFUSION_V1_4),
+    ]
+)
+@app_commands.choices(
+    scheduler_type=[
+        app_commands.Choice(name="DDIM", value=SchedulerType.DDIM),
+        app_commands.Choice(name="PNDM", value=SchedulerType.PNDM),
+        app_commands.Choice(name="EulerDiscrete", value=SchedulerType.EULER_DISCRETE),
+        app_commands.Choice(name="EulerAncestralDiscrete", value=SchedulerType.EULER_ANCESTRAL_DISCRETE),
+        app_commands.Choice(name="HeunDiscrete", value=SchedulerType.HEUN_DISCRETE),
+        app_commands.Choice(name="KDPM2Discrete", value=SchedulerType.K_DPM_2_DISCRETE),
+        app_commands.Choice(name="KDPM2AncestralDiscrete", value=SchedulerType.K_DPM_2_ANCESTRAL_DISCRETE),
+        app_commands.Choice(name="LMSDiscrete", value=SchedulerType.LMS_DISCRETE),
     ]
 )
 async def generate(
@@ -63,6 +76,7 @@ async def generate(
     guidance_scale: Optional[float] = 7.0,
     model_id: Optional[app_commands.Choice[str]] = ModelEnum.STABLE_DIFFUSION_V2_1,
     negative_prompt: Optional[str] = "",
+    scheduler_type: Optional[app_commands.Choice[str]] = SchedulerType.DDIM,
 ):
     logger.info(f"{interaction.user.name} generate image")
     model_endpoint = model_settings.endpoint
@@ -70,6 +84,8 @@ async def generate(
     guild_id = str(interaction.guild.id)
     channel_id = str(interaction.channel.id)
     message_id = "0"  # interaction.message.id
+    model_id: ModelEnum = ModelEnum(model_id.value)
+    scheduler_type: SchedulerType = SchedulerType(scheduler_type.value)
     logger.info(f"{user_id} {guild_id} {channel_id} {message_id}")
     try:
         if seed is None:
@@ -83,8 +99,9 @@ async def generate(
                 height=height,
                 images=images,
                 guidance_scale=guidance_scale,
-                model_id=model_id,
+                model_id=model_id.value,
                 negative_prompt=negative_prompt,
+                scheduler_type=scheduler_type.value,
             )
         except ValidationError as validation_error:
             error_message_list = []
@@ -376,7 +393,12 @@ async def help(interaction: discord.Interaction):
         {
             "name": "negative_prompt",
             "value": "negative prompting indicates which terms you do not want to see in the resulting image.",
-            "condition": "string | default: ``",
+            "condition": "string | default: ` `",
+        },
+        {
+            "name": "scheduler_type",
+            "value": "diffusers scheduler type",
+            "condition": "string | default: `ddim`",
         },
     ]
     generate_title = "/generate"
