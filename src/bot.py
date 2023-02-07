@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from client import TextToImageClient
 from enums import ErrorMessage, ErrorTitle, ModelEnum, ResponseStatusEnum, SchedulerType, WarningMessages
 from schemas import ImageGenerationDiscordParams
-from settings import discord_settings, model_settings
+from settings import discord_bot_settings, model_settings
 from utils import (
     build_error_message,
     build_message,
@@ -25,7 +25,7 @@ from utils import (
 )
 
 
-GUILD = discord.Object(id=discord_settings.guild_id)
+GUILD = discord.Object(id=discord_bot_settings.guild_id)
 
 logger = get_logger(__name__)
 
@@ -419,4 +419,4 @@ async def help(interaction: discord.Interaction):
     await interaction.response.send_message(content=content)
 
 
-client.run(discord_settings.bot_token)
+client.run(discord_bot_settings.bot_token)
