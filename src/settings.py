@@ -18,9 +18,5 @@ class ModelSettings(BaseSettings):
     image_unit_size: int = 64
 
 
-class TwitterSettings(BaseSettings):
-    image_url: HttpUrl = Field()
-
-
 discord_bot_settings = DiscordBotSettings()
 model_settings = ModelSettings()

@@ -12,7 +12,7 @@ from discord.ui import Button, View
 
 from enums import EnvEnum, ErrorMessage, ErrorTitle, ModelEnum, ResponseStatusEnum, SchedulerType, WarningMessages
 from schemas import ImageGenerationDiscordParams, ImageGenerationParams
-from settings import model_settings
+from settings import discord_bot_settings, model_settings
 
 
 def get_logger(name):
@@ -349,9 +349,9 @@ def get_twitter_url(prompt: str, task_id: str) -> str:
         return parse.quote(text)
 
     twitter_base_url = "https://twitter.com/intent/tweet"
-    if model_settings.bot_env == EnvEnum.DEV:
+    if discord_bot_settings.bot_env == EnvEnum.DEV:
         branch = "develop"
-    elif model_settings.bot_env == EnvEnum.PROD:
+    elif discord_bot_settings.bot_env == EnvEnum.PROD:
         branch = "main"
     image_url = f"https://{branch}-image-html-renderer-ainize-team.endpoint.ainize.ai/text-to-art/{task_id}"
     main_text = "It AIN’t difficult to draw a picture if you use Text-to-art scheme through AIN DAO discord - create your own image & earn $AIN!\n@ainetwork_ai #AINetwork #AIN_DAO #AIN #stablediffusion #text2art https://discord.gg/aindao"
