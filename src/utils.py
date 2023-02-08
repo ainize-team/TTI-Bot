@@ -354,6 +354,6 @@ def get_twitter_url(prompt: str, task_id: str) -> str:
     elif discord_bot_settings.bot_env == EnvEnum.PROD:
         branch = "main"
     image_url = f"https://{branch}-image-html-renderer-ainize-team.endpoint.ainize.ai/text-to-art/{task_id}"
-    main_text = "It AIN’t difficult to draw a picture if you use Text-to-art scheme through AIN DAO discord - create your own image & earn $AIN!\n@ainetwork_ai #AINetwork #AIN_DAO #AIN #stablediffusion #text2art https://discord.gg/aindao"
+    main_text = "It AIN’t difficult to draw a picture if you use Text-to-art scheme through AIN DAO discord - create your own image & earn $AIN!\n@ainetwork_ai #AINetwork #AIN_DAO #AIN #stablediffusion #text2art"
     twitter_get_twitter_url = f"{twitter_base_url}?text={encode_uri_component(main_text)}&url={image_url}"
     return twitter_get_twitter_url
