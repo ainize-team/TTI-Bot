@@ -143,7 +143,6 @@ async def get_tx_hash(
     url: str,
     n: int,
 ) -> Tuple[bool, Dict]:
-    prev_status: ResponseStatusEnum = ResponseStatusEnum.PENDING
     for step in range(n):
         logger.info(f"Step : {step}/{n}")
         is_success, res = get_req(url)
