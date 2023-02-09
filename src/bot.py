@@ -18,6 +18,8 @@ from utils import (
     get_req,
     get_results,
     get_twitter_url,
+    get_tx_hash,
+    get_tx_insight_url,
     individual_image_button,
     post_req,
     preprocess_data,
@@ -200,12 +202,13 @@ async def generate(
                 re_gen_button = Button(label="🔄", style=discord.ButtonStyle.gray)
                 re_gen_button.callback = re_generate_button(image_generation_request)
                 view.add_item(re_gen_button)
-                twitter_url = get_twitter_url(image_generation_request.prompt, task_id=task_id)
+                twitter_url = get_twitter_url(task_id=task_id)
                 share_twitter_button = Button(
                     label="Share on Twitter", style=discord.ButtonStyle.gray, url=twitter_url
                 )
 
                 view.add_item(share_twitter_button)
+
                 message_embed.set_image(url=result["grid"]["url"])
                 if sum([each["is_filtered"] for each in result.values()]):
                     warning_message_list.append(WarningMessages.NSFW)
@@ -231,6 +234,23 @@ async def generate(
                     )
 
                 # tx hash polling
+                is_success, res = await get_tx_hash(url=f"{model_endpoint}/tasks/{task_id}/tx-hash", n=20)
+                if is_success:
+                    if res["status"] != ResponseStatusEnum.ERROR:
+                        status = res["status"]
+                        tx_hash = res["tx_hash"][status]
+                        tx_insight_url = get_tx_insight_url(tx_hash)
+                        insight_button = Button(
+                            label="View on Insight", style=discord.ButtonStyle.gray, url=tx_insight_url
+                        )
+                        view.add_item(insight_button)
+
+                        await interaction.edit_original_response(
+                            content=content_message,
+                            embed=message_embed,
+                            allowed_mentions=mentions,
+                            view=view,
+                        )
                 return
             else:
                 if res:
