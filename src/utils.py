@@ -228,7 +228,7 @@ def individual_image_button(image_url: str, title: str, description: str) -> Cal
         embed = build_message(title=title, description=description, colour=discord.Colour.green())
         embed.set_image(url=image_url)
         view = View(timeout=None)
-        upscale_button = Button(label="upscale", style=discord.ButtonStyle.gray)
+        upscale_button = Button(label="Upscale", style=discord.ButtonStyle.gray)
         upscale_button.callback = up_scale_image_button(image_url, title)
         view.add_item(upscale_button)
 
@@ -302,7 +302,7 @@ def re_generate_button(image_generation_request: ImageGenerationParams) -> Calla
             )
             if is_success:
                 button_list = [
-                    Button(label=f"Image #{i + 1}", style=discord.ButtonStyle.gray)
+                    Button(label=f"#{i + 1}", style=discord.ButtonStyle.gray)
                     for i in range(image_generation_request.images)
                 ]
                 view = View(timeout=None)

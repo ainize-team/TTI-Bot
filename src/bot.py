@@ -180,7 +180,7 @@ async def generate(
             )
             if is_success:
                 button_list = [
-                    Button(label=f"Image #{i + 1}", style=discord.ButtonStyle.gray, row=0)
+                    Button(label=f"#{i + 1}", style=discord.ButtonStyle.gray, row=0)
                     for i in range(image_generation_request.images)
                 ]
                 view = View(timeout=None)
@@ -322,7 +322,7 @@ async def result(
             return
 
         button_list = [
-            Button(label=f"Image #{i + 1}", style=discord.ButtonStyle.gray) for i in range(request_params["images"])
+            Button(label=f"#{i + 1}", style=discord.ButtonStyle.gray) for i in range(request_params["images"])
         ]
         view = View(timeout=None)
         for i in range(request_params["images"]):
