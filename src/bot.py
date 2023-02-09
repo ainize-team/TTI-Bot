@@ -202,7 +202,7 @@ async def generate(
                 view.add_item(re_gen_button)
                 twitter_url = get_twitter_url(image_generation_request.prompt, task_id=task_id)
                 share_twitter_button = Button(
-                    label="Shared on Twitter", style=discord.ButtonStyle.gray, url=twitter_url
+                    label="Share on Twitter", style=discord.ButtonStyle.gray, url=twitter_url
                 )
 
                 view.add_item(share_twitter_button)
@@ -229,6 +229,8 @@ async def generate(
                         allowed_mentions=mentions,
                         view=view,
                     )
+
+                # tx hash polling
                 return
             else:
                 if res:
@@ -396,8 +398,8 @@ async def help(interaction: discord.Interaction):
         },
         {
             "name": "model_id",
-            "value": "name of diffusion model. `stable-diffusion-v1-4`, `stable-diffusion-v1-5`, `stable-diffusion-v2` and `stable-diffusion-v2-1` are supported.",
-            "condition": "string | default: `stable-diffusion-v2-1`",
+            "value": "name of diffusion model.",
+            "condition": "string | default: `stable-diffusion-v2-1-768`",
         },
         {
             "name": "negative_prompt",
