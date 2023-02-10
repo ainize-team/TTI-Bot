@@ -286,34 +286,33 @@ async def result(
     model_endpoint = model_settings.endpoint
     try:
         user_mention = interaction.user.mention
-        is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/params")
+        is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/images")
+        if not is_success:
+            error_embed = build_error_message(
+                title=ErrorTitle.WRONG_TASK_ID,
+                description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
+            )
+            await interaction.response.send_message(embed=error_embed)
+            return
 
-        if is_success:
-            if res["status"] != ResponseStatusEnum.COMPLETED:
-                message_embed = build_message(
-                    title="Task is not finished",
-                    description=f"Current status : {res['status']}",
-                    colour=discord.Colour.blue(),
-                )
-                message_embed.colour = discord.Colour.orange()
-                await interaction.response.send_message(
-                    embed=message_embed,
-                    content=f"{user_mention} The result of requested task is below.",
-                    allowed_mentions=mentions,
-                )
-                return
-            request_params = res["params"]
-            is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/images")
-            if is_success:
-                result = res["result"]
-            else:
-                error_embed = build_error_message(
-                    title=ErrorTitle.WRONG_TASK_ID,
-                    description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
-                )
-                await interaction.response.send_message(embed=error_embed)
-                return
-        else:
+        if res["status"] != ResponseStatusEnum.COMPLETED:
+            message_embed = build_message(
+                title="Task is not finished",
+                description=f"Current status : {res['status']}",
+                colour=discord.Colour.blue(),
+            )
+            message_embed.colour = discord.Colour.orange()
+            await interaction.response.send_message(
+                embed=message_embed,
+                content=f"{user_mention} The result of requested task is below.",
+                allowed_mentions=mentions,
+            )
+            return
+
+        result = res["result"]
+
+        is_success, request_params = get_req(url=f"{model_endpoint}/tasks/{task_id}/params")
+        if not is_success:
             error_embed = build_error_message(
                 title=ErrorTitle.WRONG_TASK_ID,
                 description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
