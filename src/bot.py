@@ -404,7 +404,7 @@ async def params(
 
         params_text = ""
         for param_name, param_val in request_params.items():
-            params_text += f"{param_name}: {param_val}\n"
+            params_text += f"> **{param_name}**\n> {param_val}\n"
 
         await interaction.response.send_message(
             content=params_text,
