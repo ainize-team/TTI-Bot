@@ -18,6 +18,8 @@ from utils import (
     get_req,
     get_results,
     get_twitter_url,
+    get_tx_hash,
+    get_tx_insight_url,
     individual_image_button,
     post_req,
     preprocess_data,
@@ -178,7 +180,7 @@ async def generate(
             )
             if is_success:
                 button_list = [
-                    Button(label=f"Image #{i + 1}", style=discord.ButtonStyle.gray)
+                    Button(label=f"#{i + 1}", style=discord.ButtonStyle.gray, row=0)
                     for i in range(image_generation_request.images)
                 ]
                 view = View(timeout=None)
@@ -197,15 +199,16 @@ async def generate(
                             description=f"task_id: {task_id}\nmodel_id: {model_id}",
                         )
                     view.add_item(button_list[i])
-                re_gen_button = Button(label="🔄", style=discord.ButtonStyle.gray)
+                re_gen_button = Button(label="🔄", style=discord.ButtonStyle.gray, row=0)
                 re_gen_button.callback = re_generate_button(image_generation_request)
                 view.add_item(re_gen_button)
-                twitter_url = get_twitter_url(image_generation_request.prompt, task_id=task_id)
+                twitter_url = get_twitter_url(task_id=task_id)
                 share_twitter_button = Button(
-                    label="Shared on Twitter", style=discord.ButtonStyle.gray, url=twitter_url
+                    label="Share on Twitter", style=discord.ButtonStyle.gray, url=twitter_url, row=1
                 )
 
                 view.add_item(share_twitter_button)
+
                 message_embed.set_image(url=result["grid"]["url"])
                 if sum([each["is_filtered"] for each in result.values()]):
                     warning_message_list.append(WarningMessages.NSFW)
@@ -229,6 +232,24 @@ async def generate(
                         allowed_mentions=mentions,
                         view=view,
                     )
+
+                is_success, res = await get_tx_hash(url=f"{model_endpoint}/tasks/{task_id}/tx-hash", n=20)
+                if is_success:
+                    if res["status"] != ResponseStatusEnum.ERROR:
+                        status = res["status"]
+                        tx_hash = res["tx_hash"][status]
+                        tx_insight_url = get_tx_insight_url(tx_hash)
+                        insight_button = Button(
+                            label="View on Insight", style=discord.ButtonStyle.gray, url=tx_insight_url, row=1
+                        )
+                        view.add_item(insight_button)
+
+                        await interaction.edit_original_response(
+                            content=content_message,
+                            embed=message_embed,
+                            allowed_mentions=mentions,
+                            view=view,
+                        )
                 return
             else:
                 if res:
@@ -301,7 +322,7 @@ async def result(
             return
 
         button_list = [
-            Button(label=f"Image #{i + 1}", style=discord.ButtonStyle.gray) for i in range(request_params["images"])
+            Button(label=f"#{i + 1}", style=discord.ButtonStyle.gray) for i in range(request_params["images"])
         ]
         view = View(timeout=None)
         for i in range(request_params["images"]):
@@ -396,8 +417,8 @@ async def help(interaction: discord.Interaction):
         },
         {
             "name": "model_id",
-            "value": "name of diffusion model. `stable-diffusion-v1-4`, `stable-diffusion-v1-5`, `stable-diffusion-v2` and `stable-diffusion-v2-1` are supported.",
-            "condition": "string | default: `stable-diffusion-v2-1`",
+            "value": "name of diffusion model.",
+            "condition": "string | default: `stable-diffusion-v2-1-768`",
         },
         {
             "name": "negative_prompt",

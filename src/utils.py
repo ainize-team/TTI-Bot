@@ -139,6 +139,28 @@ async def get_results(
         return False, {}
 
 
+async def get_tx_hash(
+    url: str,
+    n: int,
+) -> Tuple[bool, Dict]:
+    for step in range(n):
+        logger.info(f"Step : {step}/{n}")
+        is_success, res = get_req(url)
+        if not is_success:
+            logger.error(f"Failed To Get Req : {res}")
+            await asyncio.sleep(1)
+            continue
+        status = res["status"]
+        if status == ResponseStatusEnum.COMPLETED:
+            if ResponseStatusEnum.COMPLETED in res["tx_hash"]:
+                return True, res
+        if status == ResponseStatusEnum.ERROR:
+            return False, res
+        await asyncio.sleep(1)
+    else:
+        return False, {}
+
+
 def up_scale_image_button(image_url: str, title: str) -> Callable:
     mentions = discord.AllowedMentions(users=True)
 
@@ -206,7 +228,7 @@ def individual_image_button(image_url: str, title: str, description: str) -> Cal
         embed = build_message(title=title, description=description, colour=discord.Colour.green())
         embed.set_image(url=image_url)
         view = View(timeout=None)
-        upscale_button = Button(label="upscale", style=discord.ButtonStyle.gray)
+        upscale_button = Button(label="Upscale", style=discord.ButtonStyle.gray)
         upscale_button.callback = up_scale_image_button(image_url, title)
         view.add_item(upscale_button)
 
@@ -280,7 +302,7 @@ def re_generate_button(image_generation_request: ImageGenerationParams) -> Calla
             )
             if is_success:
                 button_list = [
-                    Button(label=f"Image #{i + 1}", style=discord.ButtonStyle.gray)
+                    Button(label=f"#{i + 1}", style=discord.ButtonStyle.gray)
                     for i in range(image_generation_request.images)
                 ]
                 view = View(timeout=None)
@@ -344,7 +366,7 @@ def re_generate_button(image_generation_request: ImageGenerationParams) -> Calla
     return call_back
 
 
-def get_twitter_url(prompt: str, task_id: str) -> str:
+def get_twitter_url(task_id: str) -> str:
     def encode_uri_component(text: str) -> str:
         return parse.quote(text)
 
@@ -357,3 +379,12 @@ def get_twitter_url(prompt: str, task_id: str) -> str:
     main_text = "It AIN’t difficult to draw a picture if you use Text-to-art scheme through AIN DAO discord - create your own image & earn $AIN!\n@ainetwork_ai #AINetwork #AIN_DAO #AIN #stablediffusion #text2art"
     twitter_get_twitter_url = f"{twitter_base_url}?text={encode_uri_component(main_text)}&url={image_url}"
     return twitter_get_twitter_url
+
+
+def get_tx_insight_url(tx_hash: str) -> str:
+    if discord_bot_settings.bot_env == EnvEnum.DEV:
+        prefix = "testnet-"
+    else:
+        prefix = ""
+    tx_insight_url = f"https://{prefix}insight.ainetwork.ai/transactions/{tx_hash}"
+    return tx_insight_url
