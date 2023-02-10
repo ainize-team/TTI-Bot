@@ -276,7 +276,7 @@ async def generate(
 
 
 @client.tree.command(guild=GUILD, name="result", description="Get task result using task id")
-@app_commands.describe(task_id="a task id string obtained when creating an image")
+@app_commands.describe(task_id="a task id string obtained when generating an image")
 async def result(
     interaction: discord.Interaction,
     task_id: str,
@@ -286,34 +286,33 @@ async def result(
     model_endpoint = model_settings.endpoint
     try:
         user_mention = interaction.user.mention
-        is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/params")
+        is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/images")
+        if not is_success:
+            error_embed = build_error_message(
+                title=ErrorTitle.WRONG_TASK_ID,
+                description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
+            )
+            await interaction.response.send_message(embed=error_embed)
+            return
 
-        if is_success:
-            if res["status"] != ResponseStatusEnum.COMPLETED:
-                message_embed = build_message(
-                    title="Task is not finished",
-                    description=f"Current status : {res['status']}",
-                    colour=discord.Colour.blue(),
-                )
-                message_embed.colour = discord.Colour.orange()
-                await interaction.response.send_message(
-                    embed=message_embed,
-                    content=f"{user_mention} The result of requested task is below.",
-                    allowed_mentions=mentions,
-                )
-                return
-            request_params = res["params"]
-            is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/images")
-            if is_success:
-                result = res["result"]
-            else:
-                error_embed = build_error_message(
-                    title=ErrorTitle.WRONG_TASK_ID,
-                    description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
-                )
-                await interaction.response.send_message(embed=error_embed)
-                return
-        else:
+        if res["status"] != ResponseStatusEnum.COMPLETED:
+            message_embed = build_message(
+                title="Task is not finished",
+                description=f"Current status : {res['status']}",
+                colour=discord.Colour.blue(),
+            )
+            message_embed.colour = discord.Colour.orange()
+            await interaction.response.send_message(
+                embed=message_embed,
+                content=f"{user_mention} The result of requested task is below.",
+                allowed_mentions=mentions,
+            )
+            return
+
+        result = res["result"]
+
+        is_success, request_params = get_req(url=f"{model_endpoint}/tasks/{task_id}/params")
+        if not is_success:
             error_embed = build_error_message(
                 title=ErrorTitle.WRONG_TASK_ID,
                 description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
@@ -368,6 +367,49 @@ async def result(
                 allowed_mentions=mentions,
                 view=view,
             )
+        return
+    except Exception as unknown_error:
+        error_message = ErrorMessage.UNKNOWN
+        error_message += f"Error: {unknown_error}"
+        error_embed = build_error_message(title="Unknown Error", description=error_message)
+        await interaction.response.send_message(embed=error_embed)
+
+
+@client.tree.command(guild=GUILD, name="params", description="Get task parameters using task id")
+@app_commands.describe(task_id="a task id string obtained when generating an image")
+async def params(
+    interaction: discord.Interaction,
+    task_id: str,
+):
+    mentions = discord.AllowedMentions(users=True)
+    model_endpoint = model_settings.endpoint
+    try:
+        is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/params")
+        if not is_success:
+            error_embed = build_error_message(
+                title=ErrorTitle.WRONG_TASK_ID,
+                description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
+            )
+            await interaction.response.send_message(embed=error_embed)
+            return
+
+        is_success, request_params = get_req(url=f"{model_endpoint}/tasks/{task_id}/params")
+        if not is_success:
+            error_embed = build_error_message(
+                title=ErrorTitle.WRONG_TASK_ID,
+                description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
+            )
+            await interaction.response.send_message(embed=error_embed)
+            return
+
+        params_text = ""
+        for param_name, param_val in request_params.items():
+            params_text += f"> **{param_name}**\n> {param_val}\n"
+
+        await interaction.response.send_message(
+            content=params_text,
+            allowed_mentions=mentions,
+        )
         return
     except Exception as unknown_error:
         error_message = ErrorMessage.UNKNOWN
@@ -432,11 +474,40 @@ async def help(interaction: discord.Interaction):
         },
     ]
     generate_title = "/generate"
+    generate_info = "Generates images from text."
     generate_description = "\n>".join(
         [f" - `{each['name']}` \n> {each['value']}\n> {each['condition']}" for each in generate_parameters]
     )
 
-    content = f"**{generate_title}** \n>{generate_description}"
+    result_parameters = [
+        {
+            "name": "task_id",
+            "value": "A task id string obtained when generating an image",
+            "condition": "required | string",
+        }
+    ]
+    result_title = "/result"
+    result_info = "Shows generating results from task id."
+    result_description = "\n>".join(
+        [f" - `{each['name']}` \n> {each['value']}\n> {each['condition']}" for each in result_parameters]
+    )
+
+    params_parameters = [
+        {
+            "name": "task_id",
+            "value": "A task id string obtained when generating an image",
+            "condition": "required | string",
+        }
+    ]
+    params_title = "/params"
+    params_info = "Shows request parameters from task id."
+    params_description = "\n>".join(
+        [f" - `{each['name']}` \n> {each['value']}\n> {each['condition']}" for each in params_parameters]
+    )
+
+    content = f"**{generate_title}** \n {generate_info} \n>{generate_description}\n"
+    content += f"**{result_title}** \n {result_info} \n>{result_description}\n"
+    content += f"**{params_title}** \n {params_info} \n>{params_description}"
     await interaction.response.send_message(content=content)
 
 
