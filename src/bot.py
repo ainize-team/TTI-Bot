@@ -212,19 +212,19 @@ async def generate(
                 message_embed.set_image(url=result["grid"]["url"])
                 if sum([each["is_filtered"] for each in result.values()]):
                     warning_message_list.append(WarningMessages.NSFW)
+                content_message = f"{user_mention} Your task is completed."
                 if len(warning_message_list) != 0:
                     warning_message_list.insert(0, f"model_id: {model_id}")
                     warning_message_list.insert(0, f"task_id: {task_id}")
                     message_embed.colour = discord.Colour.orange()
                     message_embed.description = "\n".join(warning_message_list)
                     await interaction.edit_original_response(
-                        content=f"{user_mention} Your task is completed.",
+                        content=content_message,
                         embed=message_embed,
                         allowed_mentions=mentions,
                         view=view,
                     )
                 else:
-                    content_message = f"{user_mention} Your task is completed."
                     message_embed.colour = discord.Colour.green()
                     await interaction.edit_original_response(
                         content=content_message,
