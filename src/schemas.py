@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from enums import ModelEnum
+from enums import ModelEnum, SchedulerType
 from settings import model_settings
 
 
@@ -42,7 +42,7 @@ class ImageGenerationParams(BaseModel):
         description="How much the image will be like your prompt. Higher values keep your image closer to your prompt.",
     )
     model_id: ModelEnum = Field(
-        ModelEnum.STABLE_DIFFUSION_V2,
+        ModelEnum.STABLE_DIFFUSION_V2_1_768,
         description="name of diffusion model. stable-diffusion-v1-4, stable-diffusion-v1-5 or stable-diffusion-v2 are supported.",
     )
 
@@ -50,6 +50,8 @@ class ImageGenerationParams(BaseModel):
         "",
         description="negative prompting indicates which terms you do not want to see in the resulting image.",
     )
+
+    scheduler_type: SchedulerType = Field(SchedulerType.DDIM, description="diffusers scheduler type")
 
 
 class ImageGenerationRequest(BaseModel):

@@ -8,9 +8,9 @@ from discord.ui import Button, View
 from pydantic import ValidationError
 
 from client import TextToImageClient
-from enums import ErrorMessage, ErrorTitle, ModelEnum, ResponseStatusEnum, WarningMessages
+from enums import ErrorMessage, ErrorTitle, ModelEnum, ResponseStatusEnum, SchedulerType, WarningMessages
 from schemas import ImageGenerationDiscordParams
-from settings import discord_settings, model_settings
+from settings import discord_bot_settings, model_settings
 from utils import (
     build_error_message,
     build_message,
@@ -18,6 +18,8 @@ from utils import (
     get_req,
     get_results,
     get_twitter_url,
+    get_tx_hash,
+    get_tx_insight_url,
     individual_image_button,
     post_req,
     preprocess_data,
@@ -25,7 +27,7 @@ from utils import (
 )
 
 
-GUILD = discord.Object(id=discord_settings.guild_id)
+GUILD = discord.Object(id=discord_bot_settings.guild_id)
 
 logger = get_logger(__name__)
 
@@ -44,6 +46,29 @@ client = TextToImageClient(intents=intents, guild=GUILD)
     guidance_scale="How much the prompt will influence the results",
     model_id="name of diffusion model. `stable-diffusion-v1-4`, `stable-diffusion-v1-5`, `stable-diffusion-v2` and `stable-diffusion-v2-1` are now available.",
     negative_prompt="prompt value that you do not want to see in the resulting image",
+    scheduler_type="diffusers scheduler type",
+)
+@app_commands.choices(
+    model_id=[
+        app_commands.Choice(name="Stable Diffusion v2.1-768", value=ModelEnum.STABLE_DIFFUSION_V2_1_768),
+        app_commands.Choice(name="Stable Diffusion v2.0-768", value=ModelEnum.STABLE_DIFFUSION_V2_768),
+        app_commands.Choice(name="Stable Diffusion v2.1", value=ModelEnum.STABLE_DIFFUSION_V2_1),
+        app_commands.Choice(name="Stable Diffusion v2.0", value=ModelEnum.STABLE_DIFFUSION_V2),
+        app_commands.Choice(name="Stable Diffusion v1.5", value=ModelEnum.STABLE_DIFFUSION_V1_5),
+        app_commands.Choice(name="Stable Diffusion v1.4", value=ModelEnum.STABLE_DIFFUSION_V1_4),
+    ]
+)
+@app_commands.choices(
+    scheduler_type=[
+        app_commands.Choice(name="DDIM", value=SchedulerType.DDIM),
+        app_commands.Choice(name="PNDM", value=SchedulerType.PNDM),
+        app_commands.Choice(name="EulerDiscrete", value=SchedulerType.EULER_DISCRETE),
+        app_commands.Choice(name="EulerAncestralDiscrete", value=SchedulerType.EULER_ANCESTRAL_DISCRETE),
+        app_commands.Choice(name="HeunDiscrete", value=SchedulerType.HEUN_DISCRETE),
+        app_commands.Choice(name="KDPM2Discrete", value=SchedulerType.K_DPM_2_DISCRETE),
+        app_commands.Choice(name="KDPM2AncestralDiscrete", value=SchedulerType.K_DPM_2_ANCESTRAL_DISCRETE),
+        app_commands.Choice(name="LMSDiscrete", value=SchedulerType.LMS_DISCRETE),
+    ]
 )
 async def generate(
     interaction: discord.Interaction,
@@ -54,8 +79,9 @@ async def generate(
     height: Optional[int] = 768,
     images: Optional[int] = 2,
     guidance_scale: Optional[float] = 7.0,
-    model_id: Optional[str] = ModelEnum.STABLE_DIFFUSION_V2_1,
+    model_id: Optional[app_commands.Choice[str]] = ModelEnum.STABLE_DIFFUSION_V2_1_768,
     negative_prompt: Optional[str] = "",
+    scheduler_type: Optional[app_commands.Choice[str]] = SchedulerType.DDIM,
 ):
     logger.info(f"{interaction.user.name} generate image")
     model_endpoint = model_settings.endpoint
@@ -63,6 +89,8 @@ async def generate(
     guild_id = str(interaction.guild.id)
     channel_id = str(interaction.channel.id)
     message_id = "0"  # interaction.message.id
+    model_id: ModelEnum = ModelEnum(model_id.value)
+    scheduler_type: SchedulerType = SchedulerType(scheduler_type.value)
     logger.info(f"{user_id} {guild_id} {channel_id} {message_id}")
     try:
         if seed is None:
@@ -76,8 +104,9 @@ async def generate(
                 height=height,
                 images=images,
                 guidance_scale=guidance_scale,
-                model_id=model_id,
+                model_id=model_id.value,
                 negative_prompt=negative_prompt,
+                scheduler_type=scheduler_type.value,
             )
         except ValidationError as validation_error:
             error_message_list = []
@@ -151,7 +180,7 @@ async def generate(
             )
             if is_success:
                 button_list = [
-                    Button(label=f"Image #{i + 1}", style=discord.ButtonStyle.gray)
+                    Button(label=f"#{i + 1}", style=discord.ButtonStyle.gray, row=0)
                     for i in range(image_generation_request.images)
                 ]
                 view = View(timeout=None)
@@ -170,31 +199,32 @@ async def generate(
                             description=f"task_id: {task_id}\nmodel_id: {model_id}",
                         )
                     view.add_item(button_list[i])
-                re_gen_button = Button(label="🔄", style=discord.ButtonStyle.gray)
+                re_gen_button = Button(label="🔄", style=discord.ButtonStyle.gray, row=0)
                 re_gen_button.callback = re_generate_button(image_generation_request)
                 view.add_item(re_gen_button)
-                twitter_url = get_twitter_url(image_generation_request.prompt, task_id=task_id)
+                twitter_url = get_twitter_url(task_id=task_id)
                 share_twitter_button = Button(
-                    label="Shared on Twitter", style=discord.ButtonStyle.gray, url=twitter_url
+                    label="Share on Twitter", style=discord.ButtonStyle.gray, url=twitter_url, row=1
                 )
 
                 view.add_item(share_twitter_button)
+
                 message_embed.set_image(url=result["grid"]["url"])
                 if sum([each["is_filtered"] for each in result.values()]):
                     warning_message_list.append(WarningMessages.NSFW)
+                content_message = f"{user_mention} Your task is completed."
                 if len(warning_message_list) != 0:
                     warning_message_list.insert(0, f"model_id: {model_id}")
                     warning_message_list.insert(0, f"task_id: {task_id}")
                     message_embed.colour = discord.Colour.orange()
                     message_embed.description = "\n".join(warning_message_list)
                     await interaction.edit_original_response(
-                        content=f"{user_mention} Your task is completed.",
+                        content=content_message,
                         embed=message_embed,
                         allowed_mentions=mentions,
                         view=view,
                     )
                 else:
-                    content_message = f"{user_mention} Your task is completed."
                     message_embed.colour = discord.Colour.green()
                     await interaction.edit_original_response(
                         content=content_message,
@@ -202,6 +232,24 @@ async def generate(
                         allowed_mentions=mentions,
                         view=view,
                     )
+
+                is_success, res = await get_tx_hash(url=f"{model_endpoint}/tasks/{task_id}/tx-hash", n=20)
+                if is_success:
+                    if res["status"] != ResponseStatusEnum.ERROR:
+                        status = res["status"]
+                        tx_hash = res["tx_hash"][status]
+                        tx_insight_url = get_tx_insight_url(tx_hash)
+                        insight_button = Button(
+                            label="View on Insight", style=discord.ButtonStyle.gray, url=tx_insight_url, row=1
+                        )
+                        view.add_item(insight_button)
+
+                        await interaction.edit_original_response(
+                            content=content_message,
+                            embed=message_embed,
+                            allowed_mentions=mentions,
+                            view=view,
+                        )
                 return
             else:
                 if res:
@@ -228,7 +276,7 @@ async def generate(
 
 
 @client.tree.command(guild=GUILD, name="result", description="Get task result using task id")
-@app_commands.describe(task_id="a task id string obtained when creating an image")
+@app_commands.describe(task_id="a task id string obtained when generating an image")
 async def result(
     interaction: discord.Interaction,
     task_id: str,
@@ -238,34 +286,33 @@ async def result(
     model_endpoint = model_settings.endpoint
     try:
         user_mention = interaction.user.mention
-        is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/params")
+        is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/images")
+        if not is_success:
+            error_embed = build_error_message(
+                title=ErrorTitle.WRONG_TASK_ID,
+                description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
+            )
+            await interaction.response.send_message(embed=error_embed)
+            return
 
-        if is_success:
-            if res["status"] != ResponseStatusEnum.COMPLETED:
-                message_embed = build_message(
-                    title="Task is not finished",
-                    description=f"Current status : {res['status']}",
-                    colour=discord.Colour.blue(),
-                )
-                message_embed.colour = discord.Colour.orange()
-                await interaction.response.send_message(
-                    embed=message_embed,
-                    content=f"{user_mention} The result of requested task is below.",
-                    allowed_mentions=mentions,
-                )
-                return
-            request_params = res["params"]
-            is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/images")
-            if is_success:
-                result = res["result"]
-            else:
-                error_embed = build_error_message(
-                    title=ErrorTitle.WRONG_TASK_ID,
-                    description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
-                )
-                await interaction.response.send_message(embed=error_embed)
-                return
-        else:
+        if res["status"] != ResponseStatusEnum.COMPLETED:
+            message_embed = build_message(
+                title="Task is not finished",
+                description=f"Current status : {res['status']}",
+                colour=discord.Colour.blue(),
+            )
+            message_embed.colour = discord.Colour.orange()
+            await interaction.response.send_message(
+                embed=message_embed,
+                content=f"{user_mention} The result of requested task is below.",
+                allowed_mentions=mentions,
+            )
+            return
+
+        result = res["result"]
+
+        is_success, request_params = get_req(url=f"{model_endpoint}/tasks/{task_id}/params")
+        if not is_success:
             error_embed = build_error_message(
                 title=ErrorTitle.WRONG_TASK_ID,
                 description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
@@ -274,7 +321,7 @@ async def result(
             return
 
         button_list = [
-            Button(label=f"Image #{i + 1}", style=discord.ButtonStyle.gray) for i in range(request_params["images"])
+            Button(label=f"#{i + 1}", style=discord.ButtonStyle.gray) for i in range(request_params["images"])
         ]
         view = View(timeout=None)
         for i in range(request_params["images"]):
@@ -328,6 +375,49 @@ async def result(
         await interaction.response.send_message(embed=error_embed)
 
 
+@client.tree.command(guild=GUILD, name="params", description="Get task parameters using task id")
+@app_commands.describe(task_id="a task id string obtained when generating an image")
+async def params(
+    interaction: discord.Interaction,
+    task_id: str,
+):
+    mentions = discord.AllowedMentions(users=True)
+    model_endpoint = model_settings.endpoint
+    try:
+        is_success, res = get_req(url=f"{model_endpoint}/tasks/{task_id}/params")
+        if not is_success:
+            error_embed = build_error_message(
+                title=ErrorTitle.WRONG_TASK_ID,
+                description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
+            )
+            await interaction.response.send_message(embed=error_embed)
+            return
+
+        is_success, request_params = get_req(url=f"{model_endpoint}/tasks/{task_id}/params")
+        if not is_success:
+            error_embed = build_error_message(
+                title=ErrorTitle.WRONG_TASK_ID,
+                description=f"Requested task was not found. Your task id({task_id}) may be wrong. Please input correct task id.",
+            )
+            await interaction.response.send_message(embed=error_embed)
+            return
+
+        params_text = ""
+        for param_name, param_val in request_params.items():
+            params_text += f"> **{param_name}**\n> {param_val}\n"
+
+        await interaction.response.send_message(
+            content=params_text,
+            allowed_mentions=mentions,
+        )
+        return
+    except Exception as unknown_error:
+        error_message = ErrorMessage.UNKNOWN
+        error_message += f"Error: {unknown_error}"
+        error_embed = build_error_message(title="Unknown Error", description=error_message)
+        await interaction.response.send_message(embed=error_embed)
+
+
 # TODO: Find Better way
 @client.tree.command(guild=GUILD, name="help", description="Show help for bot")
 async def help(interaction: discord.Interaction):
@@ -369,22 +459,56 @@ async def help(interaction: discord.Interaction):
         },
         {
             "name": "model_id",
-            "value": "name of diffusion model. `stable-diffusion-v1-4`, `stable-diffusion-v1-5`, `stable-diffusion-v2` and `stable-diffusion-v2-1` are supported.",
-            "condition": "string | default: `stable-diffusion-v2-1`",
+            "value": "name of diffusion model.",
+            "condition": "string | default: `stable-diffusion-v2-1-768`",
         },
         {
             "name": "negative_prompt",
             "value": "negative prompting indicates which terms you do not want to see in the resulting image.",
-            "condition": "string | default: ``",
+            "condition": "string | default: ` `",
+        },
+        {
+            "name": "scheduler_type",
+            "value": "diffusers scheduler type",
+            "condition": "string | default: `ddim`",
         },
     ]
     generate_title = "/generate"
+    generate_info = "Generates images from text."
     generate_description = "\n>".join(
         [f" - `{each['name']}` \n> {each['value']}\n> {each['condition']}" for each in generate_parameters]
     )
 
-    content = f"**{generate_title}** \n>{generate_description}"
+    result_parameters = [
+        {
+            "name": "task_id",
+            "value": "A task id string obtained when generating an image",
+            "condition": "required | string",
+        }
+    ]
+    result_title = "/result"
+    result_info = "Shows generating results from task id."
+    result_description = "\n>".join(
+        [f" - `{each['name']}` \n> {each['value']}\n> {each['condition']}" for each in result_parameters]
+    )
+
+    params_parameters = [
+        {
+            "name": "task_id",
+            "value": "A task id string obtained when generating an image",
+            "condition": "required | string",
+        }
+    ]
+    params_title = "/params"
+    params_info = "Shows request parameters from task id."
+    params_description = "\n>".join(
+        [f" - `{each['name']}` \n> {each['value']}\n> {each['condition']}" for each in params_parameters]
+    )
+
+    content = f"**{generate_title}** \n {generate_info} \n>{generate_description}\n"
+    content += f"**{result_title}** \n {result_info} \n>{result_description}\n"
+    content += f"**{params_title}** \n {params_info} \n>{params_description}"
     await interaction.response.send_message(content=content)
 
 
-client.run(discord_settings.bot_token)
+client.run(discord_bot_settings.bot_token)
