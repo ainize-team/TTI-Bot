@@ -44,7 +44,7 @@ client = TextToImageClient(intents=intents, guild=GUILD)
     height="Image Height",
     images="How many images you wish to generate",
     guidance_scale="How much the prompt will influence the results",
-    model_id="name of diffusion model. `stable-diffusion-v1-4`, `stable-diffusion-v1-5`, `stable-diffusion-v2` and `stable-diffusion-v2-1` are now available.",
+    model_id="name of diffusion model.",
     negative_prompt="prompt value that you do not want to see in the resulting image",
     scheduler_type="diffusers scheduler type",
 )
@@ -56,6 +56,7 @@ client = TextToImageClient(intents=intents, guild=GUILD)
         app_commands.Choice(name="Stable Diffusion v2.0", value=ModelEnum.STABLE_DIFFUSION_V2),
         app_commands.Choice(name="Stable Diffusion v1.5", value=ModelEnum.STABLE_DIFFUSION_V1_5),
         app_commands.Choice(name="Stable Diffusion v1.4", value=ModelEnum.STABLE_DIFFUSION_V1_4),
+        app_commands.Choice(name="OpenJourney V2.0", value=ModelEnum.OPENJOURNEY_V2),
     ]
 )
 @app_commands.choices(
