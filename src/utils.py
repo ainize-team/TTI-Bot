@@ -405,7 +405,7 @@ def get_twitter_url(task_id: str) -> str:
     image_url = f"https://aindao-text-to-art.ainetwork.xyz/{task_id}"
     if discord_bot_settings.bot_env == EnvEnum.DEV:
         image_url = f"https://aindao-text-to-art-dev.ainetwork.xyz/{task_id}"
-    main_text = "It AIN't difficult to draw a picture if you use Text-to-art through #AIN_DAO discord - click the image below to create your own image & earn #AIN\n@ainetwork_ai #AINetwork #Bittrex #Listing #AINFT #AirdropEvent #AI #ChatGPT #OpenAI #blockchain"
+    main_text = "If you like the left image👉click ❤\nIf you like the right image👉click 🔁\nIf you like both👉click the image below to create yours & earn #AIN\n@ainetwork_ai #AINetwork #Kyberswap #Listing #AINFT #AirdropEvent #AI #ChatGPT #OpenAI"
     twitter_get_twitter_url = f"{twitter_base_url}?text={encode_uri_component(main_text)}&url={image_url}"
     return twitter_get_twitter_url
 
