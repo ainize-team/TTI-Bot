@@ -51,12 +51,7 @@ client = TextToImageClient(intents=intents, guild=GUILD)
 @app_commands.choices(
     model_id=[
         app_commands.Choice(name="Stable Diffusion v2.1-768", value=ModelEnum.STABLE_DIFFUSION_V2_1_768),
-        app_commands.Choice(name="Stable Diffusion v2.0-768", value=ModelEnum.STABLE_DIFFUSION_V2_768),
         app_commands.Choice(name="Stable Diffusion v2.1", value=ModelEnum.STABLE_DIFFUSION_V2_1),
-        app_commands.Choice(name="Stable Diffusion v2.0", value=ModelEnum.STABLE_DIFFUSION_V2),
-        app_commands.Choice(name="Stable Diffusion v1.5", value=ModelEnum.STABLE_DIFFUSION_V1_5),
-        app_commands.Choice(name="Stable Diffusion v1.4", value=ModelEnum.STABLE_DIFFUSION_V1_4),
-        app_commands.Choice(name="OpenJourney V2.0", value=ModelEnum.OPENJOURNEY_V2),
     ]
 )
 @app_commands.choices(
